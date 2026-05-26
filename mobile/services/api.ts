@@ -65,10 +65,16 @@ API.interceptors.response.use(
 export const loginAPI = async (data: { email: string; password: string }) => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      if (data.email === 'test@gmail.com' && data.password === '123456') {
+      // Admin account
+      if (data.email === 'admin@test.com' && data.password === '123456') {
+        resolve({ data: { email: 'admin@test.com', role: 'admin', token: 'mock-admin-token' } } as any);
+      }
+      // User account
+      else if (data.email === 'test@gmail.com' && data.password === '123456') {
         resolve({ data: { email: 'test@gmail.com', role: 'user', token: 'mock-token' } } as any);
-      } else {
-        reject({ response: { data: { message: 'Sai email hoặc mật khẩu (Dùng: test@gmail.com / 123456)' } } });
+      } 
+      else {
+        reject({ response: { data: { message: 'Sai email hoặc mật khẩu (Admin: admin@test.com / 123456 hoặc User: test@gmail.com / 123456)' } } });
       }
     }, 1500);
   });
