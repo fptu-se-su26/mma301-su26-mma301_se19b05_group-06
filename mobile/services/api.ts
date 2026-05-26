@@ -62,11 +62,23 @@ API.interceptors.response.use(
 );
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
-export const loginAPI = (data: { email: string; password: string }) =>
-  API.post('/auth/login', data);
+export const loginAPI = async (data: { email: string; password: string }) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (data.email === 'test@gmail.com' && data.password === '123456') {
+        resolve({ data: { email: 'test@gmail.com', role: 'user', token: 'mock-token' } } as any);
+      } else {
+        reject({ response: { data: { message: 'Sai email hoặc mật khẩu (Dùng: test@gmail.com / 123456)' } } });
+      }
+    }, 1500);
+  });
+};
 
-export const registerAPI = (data: { name: string; email: string; password: string }) =>
-  API.post('/auth/register', data);
+export const registerAPI = async (data: { name: string; email: string; password: string }) => {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve({ data: { ...data, role: 'user', token: 'mock-token' } } as any), 1500);
+  });
+};
 
 export const googleLoginAPI = (data: { credential: string }) =>
   API.post('/auth/google', data);
