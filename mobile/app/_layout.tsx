@@ -11,6 +11,8 @@ const RootLayout = () => (
       <Stack.Screen name="(auth)/login" />
       <Stack.Screen name="(auth)/register" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(admin)" />
+      <Stack.Screen name="admin-car-form" />
     </Stack>
   </View>
 );
