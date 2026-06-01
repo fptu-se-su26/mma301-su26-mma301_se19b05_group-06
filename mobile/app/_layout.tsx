@@ -13,6 +13,7 @@ const RootLayout = () => (
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(admin)" />
       <Stack.Screen name="admin-car-form" />
+      <Stack.Screen name="car/[id]" />
     </Stack>
   </View>
 );

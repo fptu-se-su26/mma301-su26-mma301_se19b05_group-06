@@ -11,9 +11,11 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, Bell, Sparkles, SlidersHorizontal, Trophy, Crown, Flame } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+import { Search, Bell, Sparkles, SlidersHorizontal, Trophy, Crown, Flame, X, RotateCcw, MapPin, ArrowUpDown, Check } from 'lucide-react-native';
 import {
   LuxuryColors,
   LuxurySpacing,
@@ -89,8 +91,29 @@ export default function ShowroomScreen() {
   const [user, setUser] = useState<StoredUser | null>(null);
   const [cars, setCars] = useState<any[]>(MOCK_CARS);
   const [loading, setLoading] = useState(false);
+  
+  // Search & filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  // Advanced filters states
+  const [filterLocation, setFilterLocation] = useState('All');
+  const [filterPriceRange, setFilterPriceRange] = useState('All');
+  const [filterTransmission, setFilterTransmission] = useState('All');
+  const [filterFuelType, setFilterFuelType] = useState('All');
+  const [filterSeats, setFilterSeats] = useState('All');
+  const [sortBy, setSortBy] = useState('rating');
+  
+  // Modal visibility
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  
+  // Temporary states for interaction within the filter modal
+  const [tempLocation, setTempLocation] = useState('All');
+  const [tempPriceRange, setTempPriceRange] = useState('All');
+  const [tempTransmission, setTempTransmission] = useState('All');
+  const [tempFuelType, setTempFuelType] = useState('All');
+  const [tempSeats, setTempSeats] = useState('All');
+  const [tempSortBy, setTempSortBy] = useState('rating');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -117,14 +140,166 @@ export default function ShowroomScreen() {
     fetchCars();
   }, []);
 
+  const openFilterModal = () => {
+    setTempLocation(filterLocation);
+    setTempPriceRange(filterPriceRange);
+    setTempTransmission(filterTransmission);
+    setTempFuelType(filterFuelType);
+    setTempSeats(filterSeats);
+    setTempSortBy(sortBy);
+    setIsFilterModalVisible(true);
+  };
+
+  const applyFilters = () => {
+    setFilterLocation(tempLocation);
+    setFilterPriceRange(tempPriceRange);
+    setFilterTransmission(tempTransmission);
+    setFilterFuelType(tempFuelType);
+    setFilterSeats(tempSeats);
+    setSortBy(tempSortBy);
+    setIsFilterModalVisible(false);
+  };
+
+  const resetTempFilters = () => {
+    setTempLocation('All');
+    setTempPriceRange('All');
+    setTempTransmission('All');
+    setTempFuelType('All');
+    setTempSeats('All');
+    setTempSortBy('rating');
+  };
+
+  const clearAllFilters = () => {
+    setFilterLocation('All');
+    setFilterPriceRange('All');
+    setFilterTransmission('All');
+    setFilterFuelType('All');
+    setFilterSeats('All');
+    setSortBy('rating');
+    setSearchQuery('');
+    setSelectedCategory('All');
+  };
+
+  // Helper to remove a single active filter
+  const removeFilter = (filterKey: string) => {
+    if (filterKey === 'location') setFilterLocation('All');
+    else if (filterKey === 'price') setFilterPriceRange('All');
+    else if (filterKey === 'transmission') setFilterTransmission('All');
+    else if (filterKey === 'fuelType') setFilterFuelType('All');
+    else if (filterKey === 'seats') setFilterSeats('All');
+    else if (filterKey === 'sortBy') setSortBy('rating');
+  };
+
+  // Calculate live count of matching items based on temp filters inside the modal
+  const getMatchingCount = (
+    loc: string,
+    price: string,
+    trans: string,
+    fuel: string,
+    seats: string
+  ) => {
+    return cars.filter((car) => {
+      const matchesSearch =
+        searchQuery.trim() === '' ||
+        car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (car.location && car.location.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesCategory =
+        selectedCategory === 'All' ||
+        car.type?.toLowerCase() === selectedCategory.toLowerCase();
+
+      const matchesLocation =
+        loc === 'All' ||
+        (car.location && car.location.toLowerCase().includes(loc.toLowerCase()));
+
+      let matchesPrice = true;
+      if (price === 'under-10m') {
+        matchesPrice = car.pricePerDay < 10000000;
+      } else if (price === '10m-15m') {
+        matchesPrice = car.pricePerDay >= 10000000 && car.pricePerDay <= 15000000;
+      } else if (price === 'over-15m') {
+        matchesPrice = car.pricePerDay > 15000000;
+      }
+
+      const matchesTransmission =
+        trans === 'All' ||
+        (car.transmission && car.transmission.toLowerCase() === trans.toLowerCase());
+
+      const matchesFuelType =
+        fuel === 'All' ||
+        (car.fuelType && car.fuelType.toLowerCase() === fuel.toLowerCase());
+
+      let matchesSeats = true;
+      if (seats !== 'All') {
+        const seatsCount = parseInt(seats, 10);
+        if (seatsCount === 5) {
+          matchesSeats = car.seats >= 5;
+        } else {
+          matchesSeats = car.seats === seatsCount;
+        }
+      }
+
+      return matchesSearch && matchesCategory && matchesLocation && matchesPrice && matchesTransmission && matchesFuelType && matchesSeats;
+    }).length;
+  };
+
+  // Primary filtering logic
   const filteredCars = cars.filter((car) => {
     const matchesSearch =
+      searchQuery.trim() === '' ||
       car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      car.model.toLowerCase().includes(searchQuery.toLowerCase());
+      car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (car.location && car.location.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchesCategory =
       selectedCategory === 'All' ||
       car.type?.toLowerCase() === selectedCategory.toLowerCase();
-    return matchesSearch && matchesCategory;
+
+    const matchesLocation =
+      filterLocation === 'All' ||
+      (car.location && car.location.toLowerCase().includes(filterLocation.toLowerCase()));
+
+    let matchesPrice = true;
+    if (filterPriceRange === 'under-10m') {
+      matchesPrice = car.pricePerDay < 10000000;
+    } else if (filterPriceRange === '10m-15m') {
+      matchesPrice = car.pricePerDay >= 10000000 && car.pricePerDay <= 15000000;
+    } else if (filterPriceRange === 'over-15m') {
+      matchesPrice = car.pricePerDay > 15000000;
+    }
+
+    const matchesTransmission =
+      filterTransmission === 'All' ||
+      (car.transmission && car.transmission.toLowerCase() === filterTransmission.toLowerCase());
+
+    const matchesFuelType =
+      filterFuelType === 'All' ||
+      (car.fuelType && car.fuelType.toLowerCase() === filterFuelType.toLowerCase());
+
+    let matchesSeats = true;
+    if (filterSeats !== 'All') {
+      const seatsCount = parseInt(filterSeats, 10);
+      if (seatsCount === 5) {
+        matchesSeats = car.seats >= 5;
+      } else {
+        matchesSeats = car.seats === seatsCount;
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesLocation && matchesPrice && matchesTransmission && matchesFuelType && matchesSeats;
+  });
+
+  // Primary sorting logic
+  const sortedAndFilteredCars = [...filteredCars].sort((a, b) => {
+    if (sortBy === 'price-low-high') {
+      return a.pricePerDay - b.pricePerDay;
+    }
+    if (sortBy === 'price-high-low') {
+      return b.pricePerDay - a.pricePerDay;
+    }
+    // Default: rating high to low
+    return (b.rating || 0) - (a.rating || 0);
   });
 
   return (
@@ -152,17 +327,127 @@ export default function ShowroomScreen() {
           <GlassCard style={styles.searchBar}>
             <Search size={18} color={LuxuryColors.textSecondary} />
             <TextInput
-              placeholder="Search premium fleet..."
+              placeholder="Search by brand, model, location..."
               placeholderTextColor={LuxuryColors.textSecondary}
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
-            <PremiumPressable style={styles.filterBtn}>
-              <SlidersHorizontal size={18} color={LuxuryColors.accent} />
+            {searchQuery !== '' && (
+              <PremiumPressable onPress={() => setSearchQuery('')} style={styles.clearSearchBtn}>
+                <X size={16} color={LuxuryColors.textSecondary} />
+              </PremiumPressable>
+            )}
+            <PremiumPressable
+              onPress={openFilterModal}
+              style={[
+                styles.filterBtn,
+                (filterLocation !== 'All' ||
+                  filterPriceRange !== 'All' ||
+                  filterTransmission !== 'All' ||
+                  filterFuelType !== 'All' ||
+                  filterSeats !== 'All' ||
+                  sortBy !== 'rating') &&
+                  styles.filterBtnActive,
+              ]}
+            >
+              <SlidersHorizontal
+                size={18}
+                color={
+                  filterLocation !== 'All' ||
+                  filterPriceRange !== 'All' ||
+                  filterTransmission !== 'All' ||
+                  filterFuelType !== 'All' ||
+                  filterSeats !== 'All' ||
+                  sortBy !== 'rating'
+                    ? LuxuryColors.background
+                    : LuxuryColors.accent
+                }
+              />
             </PremiumPressable>
           </GlassCard>
         </View>
+
+        {/* ACTIVE ADVANCED FILTERS BAR */}
+        {(filterLocation !== 'All' ||
+          filterPriceRange !== 'All' ||
+          filterTransmission !== 'All' ||
+          filterFuelType !== 'All' ||
+          filterSeats !== 'All' ||
+          sortBy !== 'rating') && (
+          <View style={styles.activeFiltersContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
+              <Text style={styles.activeFiltersLabel}>Filters:</Text>
+              
+              {filterLocation !== 'All' && (
+                <View style={styles.filterPill}>
+                  <Text style={styles.filterPillText}>{filterLocation}</Text>
+                  <PremiumPressable onPress={() => removeFilter('location')} style={styles.removePillBtn}>
+                    <X size={10} color={LuxuryColors.accent} />
+                  </PremiumPressable>
+                </View>
+              )}
+
+              {filterPriceRange !== 'All' && (
+                <View style={styles.filterPill}>
+                  <Text style={styles.filterPillText}>
+                    {filterPriceRange === 'under-10m'
+                      ? '< 10M'
+                      : filterPriceRange === '10m-15m'
+                      ? '10M - 15M'
+                      : '> 15M'}
+                  </Text>
+                  <PremiumPressable onPress={() => removeFilter('price')} style={styles.removePillBtn}>
+                    <X size={10} color={LuxuryColors.accent} />
+                  </PremiumPressable>
+                </View>
+              )}
+
+              {filterTransmission !== 'All' && (
+                <View style={styles.filterPill}>
+                  <Text style={styles.filterPillText}>{filterTransmission}</Text>
+                  <PremiumPressable onPress={() => removeFilter('transmission')} style={styles.removePillBtn}>
+                    <X size={10} color={LuxuryColors.accent} />
+                  </PremiumPressable>
+                </View>
+              )}
+
+              {filterFuelType !== 'All' && (
+                <View style={styles.filterPill}>
+                  <Text style={styles.filterPillText}>{filterFuelType}</Text>
+                  <PremiumPressable onPress={() => removeFilter('fuelType')} style={styles.removePillBtn}>
+                    <X size={10} color={LuxuryColors.accent} />
+                  </PremiumPressable>
+                </View>
+              )}
+
+              {filterSeats !== 'All' && (
+                <View style={styles.filterPill}>
+                  <Text style={styles.filterPillText}>{filterSeats} Seats</Text>
+                  <PremiumPressable onPress={() => removeFilter('seats')} style={styles.removePillBtn}>
+                    <X size={10} color={LuxuryColors.accent} />
+                  </PremiumPressable>
+                </View>
+              )}
+
+              {sortBy !== 'rating' && (
+                <View style={styles.filterPill}>
+                  <Text style={styles.filterPillText}>
+                    {sortBy === 'price-low-high' ? 'Price ↑' : 'Price ↓'}
+                  </Text>
+                  <PremiumPressable onPress={() => removeFilter('sortBy')} style={styles.removePillBtn}>
+                    <X size={10} color={LuxuryColors.accent} />
+                  </PremiumPressable>
+                </View>
+              )}
+
+              <PremiumPressable onPress={clearAllFilters} style={styles.clearAllBtn}>
+                <RotateCcw size={10} color={LuxuryColors.textSecondary} />
+                <Text style={styles.clearAllBtnText}>Reset</Text>
+              </PremiumPressable>
+            </ScrollView>
+          </View>
+        )}
 
         {/* CATEGORY FILTER */}
         <View style={styles.categoriesContainer}>
@@ -200,13 +485,20 @@ export default function ShowroomScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color={LuxuryColors.accent} style={{ marginTop: 40 }} />
-        ) : filteredCars.length === 0 ? (
+        ) : sortedAndFilteredCars.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No premium models match your criteria</Text>
+            <GlassCard style={styles.emptyCard}>
+              <SlidersHorizontal size={40} color={LuxuryColors.accent} style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyText}>No premium models match your criteria</Text>
+              <Text style={styles.emptySubtext}>Try adjusting or clearing your search filters</Text>
+              <PremiumPressable onPress={clearAllFilters} style={styles.emptyResetBtn}>
+                <Text style={styles.emptyResetBtnText}>RESET ALL FILTERS</Text>
+              </PremiumPressable>
+            </GlassCard>
           </View>
         ) : (
           <View style={styles.listContainer}>
-            {filteredCars.map((car) => (
+            {sortedAndFilteredCars.map((car) => (
               <CarCard
                 key={car._id}
                 car={car}
@@ -219,6 +511,198 @@ export default function ShowroomScreen() {
 
       {/* FLOATING AI ASSISTANT BUTTON */}
       <FloatingAIButton />
+
+      {/* ADVANCED FILTERS MODAL */}
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsFilterModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
+          
+          <GlassCard style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleRow}>
+                <SlidersHorizontal size={18} color={LuxuryColors.accent} />
+                <Text style={styles.modalTitle}>ADVANCED SELECTION</Text>
+              </View>
+              <PremiumPressable onPress={() => setIsFilterModalVisible(false)} style={styles.modalCloseBtn}>
+                <X size={20} color="#FFF" />
+              </PremiumPressable>
+            </View>
+
+            {/* Scrollable Filters */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+              
+              {/* LOCATION */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>PRESENCE HUB</Text>
+                <View style={styles.optionsGrid}>
+                  {['All', 'Hanoi', 'Saigon', 'Danang'].map((loc) => (
+                    <PremiumPressable
+                      key={loc}
+                      onPress={() => setTempLocation(loc)}
+                      style={[
+                        styles.optionPill,
+                        tempLocation === loc && styles.optionPillActive,
+                      ]}
+                    >
+                      {tempLocation === loc && <Check size={10} color={LuxuryColors.background} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.optionText, tempLocation === loc && styles.optionTextActive]}>
+                        {loc === 'All' ? 'All Hubs' : loc}
+                      </Text>
+                    </PremiumPressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* PRICE RANGE */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>DAILY BUDGET</Text>
+                <View style={styles.optionsGrid}>
+                  {[
+                    { label: 'All budgets', value: 'All' },
+                    { label: '< 10M VNĐ', value: 'under-10m' },
+                    { label: '10M - 15M VNĐ', value: '10m-15m' },
+                    { label: '> 15M VNĐ', value: 'over-15m' },
+                  ].map((item) => (
+                    <PremiumPressable
+                      key={item.value}
+                      onPress={() => setTempPriceRange(item.value)}
+                      style={[
+                        styles.optionPill,
+                        tempPriceRange === item.value && styles.optionPillActive,
+                        { width: '48%' }
+                      ]}
+                    >
+                      {tempPriceRange === item.value && <Check size={10} color={LuxuryColors.background} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.optionText, tempPriceRange === item.value && styles.optionTextActive]}>
+                        {item.label}
+                      </Text>
+                    </PremiumPressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* TRANSMISSION */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>TRANSMISSION</Text>
+                <View style={styles.optionsGrid}>
+                  {['All', 'Automatic', 'Manual'].map((trans) => (
+                    <PremiumPressable
+                      key={trans}
+                      onPress={() => setTempTransmission(trans)}
+                      style={[
+                        styles.optionPill,
+                        tempTransmission === trans && styles.optionPillActive,
+                      ]}
+                    >
+                      {tempTransmission === trans && <Check size={10} color={LuxuryColors.background} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.optionText, tempTransmission === trans && styles.optionTextActive]}>
+                        {trans}
+                      </Text>
+                    </PremiumPressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* FUEL TYPE */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>PROPULSION SYSTEM</Text>
+                <View style={styles.optionsGrid}>
+                  {['All', 'Petrol', 'Hybrid', 'Electric'].map((fuel) => (
+                    <PremiumPressable
+                      key={fuel}
+                      onPress={() => setTempFuelType(fuel)}
+                      style={[
+                        styles.optionPill,
+                        tempFuelType === fuel && styles.optionPillActive,
+                      ]}
+                    >
+                      {tempFuelType === fuel && <Check size={10} color={LuxuryColors.background} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.optionText, tempFuelType === fuel && styles.optionTextActive]}>
+                        {fuel}
+                      </Text>
+                    </PremiumPressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* SEAT COUNT */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>CABIN CAPACITY</Text>
+                <View style={styles.optionsGrid}>
+                  {[
+                    { label: 'All', value: 'All' },
+                    { label: '2 Seats', value: '2' },
+                    { label: '4 Seats', value: '4' },
+                    { label: '5+ Seats', value: '5' },
+                  ].map((item) => (
+                    <PremiumPressable
+                      key={item.value}
+                      onPress={() => setTempSeats(item.value)}
+                      style={[
+                        styles.optionPill,
+                        tempSeats === item.value && styles.optionPillActive,
+                      ]}
+                    >
+                      {tempSeats === item.value && <Check size={10} color={LuxuryColors.background} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.optionText, tempSeats === item.value && styles.optionTextActive]}>
+                        {item.label}
+                      </Text>
+                    </PremiumPressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* SORT BY */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>SORTING ORDER</Text>
+                <View style={styles.optionsGrid}>
+                  {[
+                    { label: 'Rating (Top Class)', value: 'rating' },
+                    { label: 'Price: Low to High', value: 'price-low-high' },
+                    { label: 'Price: High to Low', value: 'price-high-low' },
+                  ].map((sortOption) => (
+                    <PremiumPressable
+                      key={sortOption.value}
+                      onPress={() => setTempSortBy(sortOption.value)}
+                      style={[
+                        styles.optionPill,
+                        tempSortBy === sortOption.value && styles.optionPillActive,
+                        { width: '100%' }
+                      ]}
+                    >
+                      {tempSortBy === sortOption.value && <Check size={10} color={LuxuryColors.background} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.optionText, tempSortBy === sortOption.value && styles.optionTextActive]}>
+                        {sortOption.label}
+                      </Text>
+                    </PremiumPressable>
+                  ))}
+                </View>
+              </View>
+
+            </ScrollView>
+
+            {/* Modal Footer */}
+            <View style={styles.modalFooter}>
+              <PremiumPressable onPress={resetTempFilters} style={styles.resetBtn}>
+                <RotateCcw size={14} color="#FFF" />
+                <Text style={styles.resetBtnText}>RESET</Text>
+              </PremiumPressable>
+              
+              <PremiumPressable onPress={applyFilters} style={styles.applyBtn}>
+                <Text style={styles.applyBtnText}>
+                  APPLY ({getMatchingCount(tempLocation, tempPriceRange, tempTransmission, tempFuelType, tempSeats)} FOUND)
+                </Text>
+              </PremiumPressable>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -444,5 +928,219 @@ const styles = StyleSheet.create({
   emptyText: {
     color: LuxuryColors.textSecondary,
     fontSize: 14,
+  },
+  clearSearchBtn: {
+    padding: 8,
+    marginRight: -4,
+  },
+  filterBtnActive: {
+    backgroundColor: LuxuryColors.accent,
+    borderRadius: LuxuryRadius.xs,
+    padding: 6,
+  },
+  activeFiltersContainer: {
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  activeFiltersScroll: {
+    paddingHorizontal: LuxurySpacing.screenPadding,
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeFiltersLabel: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.textMuted,
+    fontSize: 8,
+    marginRight: 2,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(234, 179, 8, 0.08)',
+    borderColor: 'rgba(234, 179, 8, 0.3)',
+    borderWidth: 1,
+    paddingLeft: 10,
+    paddingRight: 6,
+    paddingVertical: 4,
+    borderRadius: LuxuryRadius.full,
+    gap: 6,
+  },
+  filterPillText: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.accent,
+    fontSize: 8,
+    textTransform: 'none',
+  },
+  removePillBtn: {
+    padding: 2,
+  },
+  clearAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: LuxuryRadius.full,
+  },
+  clearAllBtnText: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.textSecondary,
+    fontSize: 8,
+    textTransform: 'none',
+  },
+  emptyCard: {
+    width: '100%',
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: LuxuryRadius.xl,
+    gap: 4,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: LuxuryColors.textMuted,
+    marginBottom: 16,
+  },
+  emptyResetBtn: {
+    backgroundColor: LuxuryColors.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: LuxuryRadius.md,
+  },
+  emptyResetBtnText: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.background,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: LuxuryRadius.xl,
+    borderTopRightRadius: LuxuryRadius.xl,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    height: '80%',
+    padding: 24,
+    borderWidth: 0,
+    borderTopWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalTitle: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.accent,
+    fontSize: 12,
+    letterSpacing: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScroll: {
+    paddingBottom: 40,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    ...LuxuryTypography.tiny,
+    color: '#94A3B8',
+    fontSize: 9,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: LuxuryRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  optionPillActive: {
+    borderColor: LuxuryColors.accent,
+    backgroundColor: LuxuryColors.accent,
+  },
+  optionText: {
+    ...LuxuryTypography.caption,
+    color: LuxuryColors.textSecondary,
+    fontSize: 12,
+  },
+  optionTextActive: {
+    color: LuxuryColors.background,
+    fontWeight: 'bold',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'transparent',
+  },
+  resetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    flex: 1,
+    height: 52,
+    borderRadius: LuxuryRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  resetBtnText: {
+    ...LuxuryTypography.tiny,
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  applyBtn: {
+    flex: 2,
+    height: 52,
+    backgroundColor: LuxuryColors.accent,
+    borderRadius: LuxuryRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyBtnText: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.background,
+    fontSize: 10,
+    fontWeight: '900',
   },
 });
