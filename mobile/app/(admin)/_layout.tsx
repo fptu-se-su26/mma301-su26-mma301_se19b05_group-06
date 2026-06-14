@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { BlurView } from 'expo-blur';
 import { StyleSheet, Platform } from 'react-native';
-import { LayoutDashboard, Users, Car, CalendarClock } from 'lucide-react-native';
+import { LayoutDashboard, Users, Car, CalendarClock, TrendingUp, CheckSquare, CalendarDays, Tag } from 'lucide-react-native';
 
 import { LuxuryColors } from '@/constants/luxuryTheme';
 
@@ -68,6 +68,34 @@ export default function AdminTabLayout() {
         options={{
           title: 'ORDERS',
           tabBarIcon: ({ color }) => <CalendarClock size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="pricing"
+        options={{
+          title: 'PRICING',
+          tabBarIcon: ({ color }) => <TrendingUp size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="availability"
+        options={{
+          title: 'AVAIL',
+          tabBarIcon: ({ color }) => <CheckSquare size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'CALENDAR',
+          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="vouchers"
+        options={{
+          title: 'VOUCHERS',
+          tabBarIcon: ({ color }) => <Tag size={22} color={color} />,
         }}
       />
     </Tabs>
