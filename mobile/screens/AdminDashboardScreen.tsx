@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View, StatusBar } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View, StatusBar, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Users, Car, Calendar, DollarSign, Activity, TrendingUp } from 'lucide-react-native';
+import { Users, Car, Calendar, DollarSign, Activity, TrendingUp, LogOut } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { 
   LuxuryColors, 
@@ -13,6 +15,7 @@ import { getStatsAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 
 const AdminDashboardScreen = () => {
+  const router = useRouter();
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
@@ -69,8 +72,17 @@ const AdminDashboardScreen = () => {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Control Center</Text>
-          <Text style={styles.subtitle}>Executive fleet management overview</Text>
+          <View>
+            <Text style={styles.title}>Control Center</Text>
+            <Text style={styles.subtitle}>Executive fleet management overview</Text>
+          </View>
+          <TouchableOpacity onPress={async () => {
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('user');
+            router.replace('/login');
+          }} style={{ padding: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: LuxuryRadius.md }}>
+            <LogOut size={20} color={LuxuryColors.danger} />
+          </TouchableOpacity>
         </View>
         
         <View style={styles.grid}>
@@ -111,6 +123,9 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 32,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
     ...LuxuryTypography.titleL,

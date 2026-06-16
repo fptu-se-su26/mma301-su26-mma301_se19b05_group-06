@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { LuxuryColors } from '@/constants/luxuryTheme';
-import { getStoredUser } from '@/services/storage';
+import { getStoredUser, clearUser } from '@/services/storage';
 
 const Index = () => {
   const router = useRouter();
@@ -10,6 +10,7 @@ const Index = () => {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        await clearUser(); // FORCED LOGOUT
         const user = await getStoredUser();
         if (user) {
           if (user.role === 'admin') {

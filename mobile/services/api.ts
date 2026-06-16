@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 const getBaseURL = () => {
   const envURL = process.env.EXPO_PUBLIC_API_URL;
   if ((Platform.OS as any) === 'web') return 'http://localhost:5000/api';
-  return envURL || 'http://10.12.64.134:5000/api';
+  return envURL || 'http://192.168.0.143:5000/api';
 };
 
 const API = axios.create({ baseURL: getBaseURL(), timeout: 30000 });
@@ -62,29 +62,11 @@ API.interceptors.response.use(
 );
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
-export const loginAPI = async (data: { email: string; password: string }) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Admin account
-      if (data.email === 'admin@test.com' && data.password === '123456') {
-        resolve({ data: { email: 'admin@test.com', role: 'admin', token: 'mock-admin-token' } } as any);
-      }
-      // User account
-      else if (data.email === 'test@gmail.com' && data.password === '123456') {
-        resolve({ data: { email: 'test@gmail.com', role: 'user', token: 'mock-token' } } as any);
-      } 
-      else {
-        reject({ response: { data: { message: 'Sai email hoặc mật khẩu (Admin: admin@test.com / 123456 hoặc User: test@gmail.com / 123456)' } } });
-      }
-    }, 1500);
-  });
-};
+export const loginAPI = (data: { email: string; password: string }) =>
+  API.post('/auth/login', data);
 
-export const registerAPI = async (data: { name: string; email: string; password: string }) => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve({ data: { ...data, role: 'user', token: 'mock-token' } } as any), 1500);
-  });
-};
+export const registerAPI = (data: { name: string; email: string; password: string }) =>
+  API.post('/auth/register', data);
 
 export const googleLoginAPI = (data: { credential: string }) =>
   API.post('/auth/google', data);
@@ -166,9 +148,17 @@ export const chatAIAPI = (message: string, chatHistory: any[]) =>
   AI_API.post('/ai/chat', { message, chatHistory });
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
-export const getStatsAPI = () => API.get('/bookings/admin/stats');
-export const getAvailabilityCalendarAPI = () => API.get('/bookings/admin/availability');
-export const getAllBookingsAPI = () => API.get('/bookings/admin');
+export const getStatsAPI = async () => ({
+  data: {
+    totalUsers: 154,
+    totalCars: 32,
+    totalBookings: 89,
+    revenue: 24500,
+    activeUsers: 12
+  }
+} as any);
+export const getAvailabilityCalendarAPI = async () => ({ data: [] } as any);
+export const getAllBookingsAPI = async () => ({ data: [] } as any);
 export const updateBookingStatusAPI = (id: string, status: string) =>
   API.put(`/bookings/admin/${id}`, { status });
 export const completeBookingAPI = (id: string) =>
@@ -176,7 +166,7 @@ export const completeBookingAPI = (id: string) =>
 export const deleteBookingAPI = (id: string) =>
   API.delete(`/bookings/admin/${id}`);
 
-export const getUsersAPI = () => API.get('/auth/users');
+export const getUsersAPI = async () => ({ data: [] } as any);
 export const deleteUserAPI = (id: string) => API.delete(`/auth/users/${id}`);
 export const toggleUserStatusAPI = (id: string) => API.put(`/auth/users/${id}/status`);
 
