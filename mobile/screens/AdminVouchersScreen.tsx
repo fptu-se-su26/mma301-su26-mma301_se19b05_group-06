@@ -614,26 +614,41 @@ const AdminVouchersScreen = () => {
   }, []);
 
   const handleDelete = (id: string, code: string) => {
-    Alert.alert(
-      'Delete Voucher',
-      `Are you sure you want to permanently delete the voucher "${code}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAdminVoucherAPI(id);
-              setVouchers((prev) => prev.filter((v) => v._id !== id));
-            } catch {
-              setVouchers((prev) => prev.filter((v) => v._id !== id));
-              Alert.alert('Offline Mode', 'Server offline. Voucher has been deleted locally.');
-            }
+    const message = `Are you sure you want to permanently delete the voucher "${code}"? This action cannot be undone.`;
+
+    const performDelete = async () => {
+      try {
+        await deleteAdminVoucherAPI(id);
+        setVouchers((prev) => prev.filter((v) => v._id !== id));
+      } catch {
+        setVouchers((prev) => prev.filter((v) => v._id !== id));
+        if (Platform.OS === 'web') {
+          alert('Offline Mode: Server offline. Voucher has been deleted locally.');
+        } else {
+          Alert.alert('Offline Mode', 'Server offline. Voucher has been deleted locally.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(message);
+      if (confirmed) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Voucher',
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: performDelete,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleCreated = (newVoucher?: Voucher) => {
@@ -962,13 +977,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   inlineCalendarCard: {
-    padding: 12,
+    padding: 10,
     backgroundColor: 'rgba(255,255,255,0.02)',
     borderColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1.5,
     borderRadius: LuxuryRadius.md,
-    gap: 10,
+    gap: 8,
     marginTop: 4,
+    maxWidth: 320,
+    width: '100%',
+    alignSelf: 'center',
   },
   inlineCalHeader: {
     flexDirection: 'row',
