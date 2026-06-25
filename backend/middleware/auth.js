@@ -23,3 +23,11 @@ exports.adminOnly = (req, res, next) => {
     res.status(403).json({ message: 'Not authorized as admin' });
   }
 };
+
+exports.sellerOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'seller') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as seller' });
+  }
+};

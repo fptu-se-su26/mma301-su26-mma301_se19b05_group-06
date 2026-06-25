@@ -43,6 +43,10 @@ const Car = mongoose.model('Car', carSchema);
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+const sellerRoutes = require('./routes/sellerRoutes');
+app.use('/api/seller', sellerRoutes);
+
+
 // 1. API lấy danh sách xe
 app.get('/api/cars', async (req, res) => {
   try {
