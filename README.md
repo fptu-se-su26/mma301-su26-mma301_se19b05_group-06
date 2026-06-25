@@ -4,12 +4,12 @@
 
 | Item | Description |
 |---|---|
-| Course |  |
-| Class |  |
+| Course | MMA301 |
+| Class | SE19B05 |
 | Semester | SU26 |
-| Group |  |
-| Topic |  |
-| Repository |  |
+| Group |carRental   |
+| Topic | carRental  |
+| Repository |https://github.com/fptu-se-su26/mma301-su26-mma301_se19b05_group-06  |
 
 ---
 
@@ -17,11 +17,11 @@
 
 | No | Student ID | Full Name | GitHub Username | Role | Main Responsibility |
 |---:|---|---|---|---|---|
-| 1 |  |  |  | Leader |  |
-| 2 |  |  |  | Member |  |
-| 3 |  |  |  | Member |  |
-| 4 |  |  |  | Member |  |
-| 5 |  |  |  | Member |  |
+| 1 | DE180984 | Hà Đăng Anh Tài  | taianh2212  | Leader | taianh2212  |
+| 2 | DE180989 | Đỗ Văn Thành  |NTD0411 | Member |thanh0333066439-droid |
+| 3 | DE180991 | Trần Chân     |jayjo001  | Member |jayjo001  |
+| 4 | DE180004 | Nguyễn Tiến Dũng  |NTD0411 | Member |NguyenTienDung  |
+| 5 | DE180546 |Lê Tự Thanh Huy  |ThanhHuy100504  | Member | ThanhHuy100504 |
 
 ---
 

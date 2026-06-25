@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 const getBaseURL = () => {
   const envURL = process.env.EXPO_PUBLIC_API_URL;
   if ((Platform.OS as any) === 'web') return 'http://localhost:5000/api';
-  return envURL || 'http://192.168.0.143:5000/api';
+ return envURL || 'http://192.168.100.109:5000/api';
 };
 
 const API = axios.create({ baseURL: getBaseURL(), timeout: 30000 });
@@ -106,9 +106,6 @@ export const createBookingAPI = (data: any) =>
 export const getMyBookingsAPI = () =>
   API.get('/bookings/my-bookings');
 
-export const confirmPaymentAPI = (data: { bookingId: string }) =>
-  API.post('/payments/confirm', data);
-
 export const getAvailabilityByCarAPI = (carId: string) =>
   API.get(`/bookings/availability/${carId}`);
 
@@ -148,33 +145,53 @@ export const chatAIAPI = (message: string, chatHistory: any[]) =>
   AI_API.post('/ai/chat', { message, chatHistory });
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
-export const getStatsAPI = async () => ({
-  data: {
-    totalUsers: 154,
-    totalCars: 32,
-    totalBookings: 89,
-    revenue: 24500,
-    activeUsers: 12
-  }
-} as any);
-export const getAvailabilityCalendarAPI = async () => ({ data: [] } as any);
-export const getAllBookingsAPI = async () => ({ data: [] } as any);
-export const updateBookingStatusAPI = (id: string, status: string) =>
-  API.put(`/bookings/admin/${id}`, { status });
-export const completeBookingAPI = (id: string) =>
-  API.patch(`/bookings/admin/${id}/complete`);
-export const deleteBookingAPI = (id: string) =>
-  API.delete(`/bookings/admin/${id}`);
+// ─── ADMIN STATS ──────────────────────────────────────────────────────────────
+export const getStatsAPI = () =>
+  API.get('/admin/stats');
 
-export const getUsersAPI = async () => ({ data: [] } as any);
-export const deleteUserAPI = (id: string) => API.delete(`/auth/users/${id}`);
-export const toggleUserStatusAPI = (id: string) => API.put(`/auth/users/${id}/status`);
+// ─── ADMIN BOOKINGS ───────────────────────────────────────────────────────────
+export const getAllBookingsAPI = () =>
+  API.get('/admin/bookings');
+
+export const getBookingStatisticsAPI = () =>
+  API.get('/admin/booking-statistics');
+
+export const updateBookingStatusAPI = (id: string, status: string) =>
+  API.put(`/admin/bookings/${id}/status`, { status });
+
+export const completeBookingAPI = (id: string) =>
+  API.patch(`/admin/bookings/${id}/complete`);
+
+export const deleteBookingAPI = (id: string) =>
+  API.delete(`/admin/bookings/${id}`);
+
+// ─── ADMIN PAYMENTS ───────────────────────────────────────────────────────────
+export const confirmPaymentAPI = (bookingId: string) =>
+  API.post('/admin/payments/confirm', { bookingId });
+
+export const getAllPaymentsAPI = () =>
+  API.get('/admin/payments');
+
+// ─── ADMIN USERS ──────────────────────────────────────────────────────────────
+export const getUsersAPI = () =>
+  API.get('/auth/users');
+
+export const deleteUserAPI = (id: string) =>
+  API.delete(`/auth/users/${id}`);
+
+export const toggleUserStatusAPI = (id: string) =>
+  API.put(`/auth/users/${id}/status`);
 
 export const createCarAPI = (data: any) => API.post('/cars', data);
 export const updateCarAPI = (id: string, data: any) => API.put(`/cars/${id}`, data);
 export const deleteCarAPI = (id: string) => API.delete(`/cars/${id}`);
 
-export const getPricingSurgesAPI = () => API.get('/analytics/pricing-surges');
+// ─── ADMIN ANALYTICS ──────────────────────────────────────────────────────────
+export const getAnalyticsAPI = (period: 'day' | 'month' = 'month') =>
+  API.get(`/admin/analytics?period=${period}`);
+
+export const getPricingSurgesAPI = () => 
+  API.get('/admin/pricing-surges');
 
 export const getAdminAnalyticsAPI = (period: 'day' | 'month') =>
   API.get(`/admin/analytics?period=${period}`);
