@@ -5,7 +5,7 @@ const {
   changePassword, forgotPassword, resetPassword,
   getUsers, deleteUser, toggleUserStatus
 } = require('../controllers/authController');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminRouteGuard } = require('../middleware/auth');
 const router = express.Router();
 
 // Public
@@ -23,8 +23,8 @@ router.post('/logout-all', protect, logoutAll);      // POST /api/auth/logout-al
 router.put('/change-password', protect, changePassword); // PUT /api/auth/change-password
 
 // Admin
-router.get('/users', protect, adminOnly, getUsers);
-router.delete('/users/:id', protect, adminOnly, deleteUser);
-router.put('/users/:id/status', protect, adminOnly, toggleUserStatus);
+router.get('/users', adminRouteGuard, getUsers);
+router.delete('/users/:id', adminRouteGuard, deleteUser);
+router.put('/users/:id/status', adminRouteGuard, toggleUserStatus);
 
 module.exports = router;

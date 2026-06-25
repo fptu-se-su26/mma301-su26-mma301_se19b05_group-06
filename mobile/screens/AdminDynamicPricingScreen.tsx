@@ -8,6 +8,7 @@ import {
   StatusBar,
   Image,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -19,7 +20,9 @@ import {
   AlertTriangle,
   BarChart3,
   Clock,
+  ChevronLeft,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import {
   LuxuryColors,
@@ -30,6 +33,7 @@ import {
 import { getPricingSurgesAPI, getCarsAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
+import { useAdminGuard } from '@/middleware/adminGuard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface SurgeItem {
@@ -53,13 +57,7 @@ interface CarItem {
 }
 
 // ─── Mock Fallback ─────────────────────────────────────────────────────────
-const MOCK_SURGE: SurgeItem[] = [
-  { carId: '1', carName: 'Rolls-Royce Phantom', date: '2026-06-10', surgeMultiplier: 1.5, basePrice: 15000000, dynamicPrice: 22500000, reason: 'Holiday demand' },
-  { carId: '2', carName: 'Porsche 911 GT3', date: '2026-06-11', surgeMultiplier: 1.3, basePrice: 8500000, dynamicPrice: 11050000, reason: 'Weekend peak' },
-  { carId: '3', carName: 'Lamborghini Aventador', date: '2026-06-12', surgeMultiplier: 1.8, basePrice: 18000000, dynamicPrice: 32400000, reason: 'High demand' },
-  { carId: '4', carName: 'Bentley Continental', date: '2026-06-13', surgeMultiplier: 1.0, basePrice: 11000000, dynamicPrice: 11000000, reason: 'Normal rate' },
-  { carId: '5', carName: 'Ferrari 488', date: '2026-06-14', surgeMultiplier: 2.0, basePrice: 20000000, dynamicPrice: 40000000, reason: 'F1 Grand Prix week' },
-];
+// Removed mock fallback — show empty/error states instead of fake data
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatPrice = (price: number) => {
@@ -110,7 +108,7 @@ const SurgeRow = ({ item, index }: { item: SurgeItem; index: number }) => {
             <Car size={16} color={LuxuryColors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sургeCarName} numberOfLines={1}>
+            <Text style={styles.surgeCarName} numberOfLines={1}>
               {item.carName || 'Unknown Vehicle'}
             </Text>
             <View style={styles.surgeMetaRow}>
@@ -154,17 +152,23 @@ const SurgeRow = ({ item, index }: { item: SurgeItem; index: number }) => {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AdminDynamicPricingScreen = () => {
+  const router = useRouter();
+  useAdminGuard(); // Check admin access
+  
   const [surges, setSurges] = useState<SurgeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
       const { data } = await getPricingSurgesAPI();
       const list: SurgeItem[] = Array.isArray(data) ? data : (data?.surges ?? []);
-      setSurges(list.length > 0 ? list : MOCK_SURGE);
+      setSurges(list);
+      setLoadError(null);
     } catch {
-      setSurges(MOCK_SURGE);
+      setSurges([]);
+      setLoadError('Unable to load surge pricing data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -210,7 +214,10 @@ const AdminDynamicPricingScreen = () => {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
-          <View>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color={LuxuryColors.accent} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Dynamic Pricing</Text>
             <Text style={styles.subtitle}>Real-time surge & demand pricing</Text>
           </View>
@@ -221,6 +228,12 @@ const AdminDynamicPricingScreen = () => {
         </Animated.View>
 
         {/* Summary Stats */}
+        {loadError && (
+          <GlassCard style={styles.errorBanner}>
+            <Text style={styles.errorText}>{loadError}</Text>
+          </GlassCard>
+        )}
+
         <View style={styles.summaryRow}>
           <SummaryCard
             label="Surge Active"
@@ -279,8 +292,10 @@ const AdminDynamicPricingScreen = () => {
         {surges.length === 0 && (
           <GlassCard style={styles.emptyCard}>
             <DollarSign size={40} color={LuxuryColors.textMuted} />
-            <Text style={styles.emptyText}>No pricing events at this time</Text>
-            <Text style={styles.emptySubtext}>All vehicles are at base rate</Text>
+            <Text style={styles.emptyText}>No surge data available</Text>
+            <Text style={styles.emptySubtext}>
+              {loadError ? 'Please try again later' : 'All vehicles are at base rate'}
+            </Text>
           </GlassCard>
         )}
       </ScrollView>
@@ -312,9 +327,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: LuxuryRadius.md,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     ...LuxuryTypography.titleL,
@@ -322,7 +345,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...LuxuryTypography.caption,
-    color: LuxuryColors.textMuted,
+    color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
   },
   headerBadge: {
@@ -348,10 +371,11 @@ const styles = StyleSheet.create({
   },
   summaryCardWrapper: {
     flex: 1,
+    minWidth: 0,
   },
   summaryCard: {
     padding: 14,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
   },
   summaryIcon: {
@@ -365,14 +389,16 @@ const styles = StyleSheet.create({
     ...LuxuryTypography.titleM,
     fontSize: 18,
     fontWeight: '800',
+    width: '100%',
   },
   summaryLabel: {
     ...LuxuryTypography.tiny,
     color: LuxuryColors.textMuted,
     fontSize: 9,
-    textAlign: 'center',
+    textAlign: 'left',
     textTransform: 'none',
     letterSpacing: 0,
+    width: '100%',
   },
   legendCard: {
     padding: 16,
@@ -444,7 +470,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 2,
   },
-  sургeCarName: {
+  surgeCarName: {
     ...LuxuryTypography.bodySemibold,
     color: '#FFF',
     fontSize: 13,
@@ -517,6 +543,16 @@ const styles = StyleSheet.create({
     ...LuxuryTypography.caption,
     color: LuxuryColors.textMuted,
     textAlign: 'center',
+  },
+  errorBanner: {
+    padding: 12,
+    marginBottom: 16,
+    backgroundColor: 'rgba(244, 63, 94, 0.1)',
+    borderColor: 'rgba(244, 63, 94, 0.3)',
+  },
+  errorText: {
+    ...LuxuryTypography.caption,
+    color: LuxuryColors.danger,
   },
 });
 

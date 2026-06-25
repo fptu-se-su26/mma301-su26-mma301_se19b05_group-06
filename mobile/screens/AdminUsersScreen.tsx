@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, StatusBar } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, StatusBar, TouchableOpacity } from 'react-native';
 import Animated, { FadeInRight, Layout } from 'react-native-reanimated';
-import { User, Mail, Shield, Lock, Unlock, Trash2, ChevronRight, UserCheck } from 'lucide-react-native';
+import { User, Mail, Shield, Lock, Unlock, Trash2, ChevronRight, UserCheck, ChevronLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { 
   LuxuryColors, 
@@ -12,8 +13,12 @@ import {
 import { getUsersAPI, toggleUserStatusAPI, deleteUserAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
+import { useAdminGuard } from '@/middleware/adminGuard';
 
 const AdminUsersScreen = () => {
+  const router = useRouter();
+  useAdminGuard(); // Check admin access
+  
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,8 +73,13 @@ const AdminUsersScreen = () => {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Client Registry</Text>
-          <Text style={styles.subtitle}>Manage global membership and access control</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color={LuxuryColors.accent} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Client Registry</Text>
+            <Text style={styles.subtitle}>Manage global membership and access control</Text>
+          </View>
         </View>
         
         <View style={styles.list}>
@@ -145,7 +155,18 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 32,
+    gap: 12
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: LuxuryRadius.md,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   title: {
     ...LuxuryTypography.titleL,
@@ -153,7 +174,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...LuxuryTypography.caption,
-    color: LuxuryColors.textMuted,
+    color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
   },
   list: {
