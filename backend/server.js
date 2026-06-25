@@ -22,26 +22,14 @@ app.use((err, req, res, next) => {
 // MongoDB Connection
 const uri = process.env.MONGODB_URI || 'mongodb+srv://tranchan:1t2r3a4a5n6f@cluster0.8dmrtdn.mongodb.net/car-rental';
 
-// Khai báo Schema cho Car
-const carSchema = new mongoose.Schema({
-  brand: String,
-  model: String,
-  imageUrl: String,
-  pricePerDay: Number,
-  rating: Number,
-  location: String,
-  type: String,
-  seats: Number,
-  transmission: String,
-  fuelType: String,
-});
-const Car = mongoose.model('Car', carSchema);
-
-
+const Car = require('./models/Car');
 
 // --- CÁC API ENDPOINT ---
 const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api', adminRoutes);
 
 // 1. API lấy danh sách xe
 app.get('/api/cars', async (req, res) => {
