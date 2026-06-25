@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, Image, StatusBar } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, Image, StatusBar, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
-import { Plus, Trash2, MapPin, Gauge, Star, Filter, Pencil } from 'lucide-react-native';
+import { Plus, Trash2, MapPin, Gauge, Star, Filter, Pencil, ChevronLeft } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
 import { 
@@ -13,8 +13,11 @@ import {
 import { getCarsAPI, deleteCarAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
+import { useAdminGuard } from '@/middleware/adminGuard';
 
 const AdminCarsScreen = () => {
+  useAdminGuard(); // Check admin access
+  
   const router = useRouter();
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +71,10 @@ const AdminCarsScreen = () => {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color={LuxuryColors.accent} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Fleet Inventory</Text>
             <Text style={styles.subtitle}>Curate and manage your ultimate collection</Text>
           </View>
@@ -165,9 +171,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: LuxuryRadius.md,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     ...LuxuryTypography.titleL,
@@ -175,7 +189,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...LuxuryTypography.caption,
-    color: LuxuryColors.textMuted,
+    color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
   },
   addBtn: {
