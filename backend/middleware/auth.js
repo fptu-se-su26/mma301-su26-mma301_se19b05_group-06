@@ -29,5 +29,25 @@ exports.sellerOnly = (req, res, next) => {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as seller' });
+// Combines protect + adminOnly in one middleware
+exports.adminRouteGuard = (req, res, next) => {
+  let token = req.headers.authorization;
+  if (token && token.startsWith('Bearer')) {
+    token = token.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+      
+      // Check admin role
+      if (req.user.role === 'admin') {
+        next();
+      } else {
+        res.status(403).json({ message: 'Not authorized as admin' });
+      }
+    } catch (err) {
+      res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+  } else {
+    res.status(401).json({ message: 'Not authorized, no token' });
   }
 };

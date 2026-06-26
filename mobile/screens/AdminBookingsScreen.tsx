@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, StatusBar } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, StatusBar, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
-import { Calendar, User, Car, Clock, CheckCircle2, XCircle, ArrowRight, RotateCcw } from 'lucide-react-native';
+import { Calendar, User, Car, Clock, CheckCircle2, XCircle, ArrowRight, RotateCcw, ChevronLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { 
   LuxuryColors, 
@@ -12,8 +13,12 @@ import {
 import { getAllBookingsAPI, updateBookingStatusAPI, completeBookingAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
+import { useAdminGuard } from '@/middleware/adminGuard';
 
 const AdminBookingsScreen = () => {
+  const router = useRouter();
+  useAdminGuard(); // Check admin access
+  
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -80,11 +85,15 @@ const AdminBookingsScreen = () => {
     );
   }
 
-  const StatusPill = ({ status }: { status: string }) => {
-    const isApproved = status === 'Approved';
-    const isCancelled = status === 'Cancelled';
-    const isPending = status === 'Pending';
-    const isCompleted = status === 'Completed';
+  const StatusPill = ({ status }: { status?: string }) => {
+    // Defensive check: handle undefined/null status
+    const safeStatus = status || 'Unknown';
+    
+    const isApproved = safeStatus === 'Approved';
+    const isCancelled = safeStatus === 'Cancelled';
+    const isPending = safeStatus === 'Pending';
+    const isCompleted = safeStatus === 'Completed';
+    const isUnknown = safeStatus === 'Unknown';
 
     return (
       <View style={[
@@ -93,6 +102,7 @@ const AdminBookingsScreen = () => {
         isCancelled && styles.pillCancelled,
         isPending && styles.pillPending,
         isCompleted && styles.pillCompleted,
+        isUnknown && styles.pillUnknown,
       ]}>
         <Text style={[
           styles.pillText,
@@ -100,7 +110,8 @@ const AdminBookingsScreen = () => {
           isCancelled && styles.textCancelled,
           isPending && styles.textPending,
           isCompleted && styles.textCompleted,
-        ]}>{status.toUpperCase()}</Text>
+          isUnknown && styles.textUnknown,
+        ]}>{safeStatus.toUpperCase()}</Text>
       </View>
     );
   };
@@ -109,15 +120,20 @@ const AdminBookingsScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.badgeRow}>
-            <View style={styles.adminBadge}>
-              <Text style={styles.adminBadgeText}>CONCIERGE MOD</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color={LuxuryColors.accent} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <View style={styles.badgeRow}>
+              <View style={styles.adminBadge}>
+                <Text style={styles.adminBadgeText}>CONCIERGE MOD</Text>
+              </View>
             </View>
+            <Text style={styles.title}>Global Reservations</Text>
           </View>
-          <Text style={styles.title}>Global Reservations</Text>
-          <Text style={styles.subtitle}>Pending = chờ chuyển QR · Approved = đã thanh toán · Complete khi xe trả về</Text>
         </View>
+        <Text style={styles.subtitle}>Pending = chờ chuyển QR · Approved = đã thanh toán · Complete khi xe trả về</Text>
 
         {/* STATUS FILTERS */}
         <ScrollView 
@@ -268,6 +284,20 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: LuxuryRadius.md,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   badgeRow: {
     marginBottom: 12,
   },
@@ -362,11 +392,13 @@ const styles = StyleSheet.create({
   pillCancelled: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' },
   pillPending: { backgroundColor: 'rgba(234, 179, 8, 0.1)', borderColor: 'rgba(234, 179, 8, 0.3)' },
   pillCompleted: { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.3)' },
+  pillUnknown: { backgroundColor: 'rgba(107, 114, 128, 0.1)', borderColor: 'rgba(107, 114, 128, 0.3)' },
   pillText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   textApproved: { color: LuxuryColors.success },
   textCancelled: { color: LuxuryColors.danger },
   textPending: { color: LuxuryColors.accent },
   textCompleted: { color: '#818cf8' },
+  textUnknown: { color: '#6b7280' },
   pendingInfo: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(234,179,8,0.08)', paddingHorizontal: 10,

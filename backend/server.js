@@ -22,26 +22,12 @@ app.use((err, req, res, next) => {
 // MongoDB Connection
 const uri = process.env.MONGODB_URI || 'mongodb+srv://tranchan:1t2r3a4a5n6f@cluster0.8dmrtdn.mongodb.net/car-rental';
 
-// Khai báo Schema cho Car
-const carSchema = new mongoose.Schema({
-  brand: String,
-  model: String,
-  imageUrl: String,
-  pricePerDay: Number,
-  rating: Number,
-  location: String,
-  type: String,
-  seats: Number,
-  transmission: String,
-  fuelType: String,
-});
-const Car = mongoose.model('Car', carSchema);
-
-
-
-// --- CÁC API ENDPOINT ---
+// --- ROUTE IMPORTS ---
 const authRoutes = require('./routes/authRoutes');
-app.use('/api/auth', authRoutes);
+const bookingRoutes = require('./routes/bookingRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const carRoutes = require('./routes/carRoutes');
 
 const sellerRoutes = require('./routes/sellerRoutes');
 app.use('/api/seller', sellerRoutes);
@@ -57,6 +43,16 @@ app.get('/api/cars', async (req, res) => {
     console.error(error);
     res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu xe' });
   }
+// --- API ENDPOINTS ---
+app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', analyticsRoutes);
+app.use('/api/cars', carRoutes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'Server is running' });
 });
 
 // Start Server
