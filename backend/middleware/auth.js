@@ -24,6 +24,11 @@ exports.adminOnly = (req, res, next) => {
   }
 };
 
+exports.sellerOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'seller') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as seller' });
 // Combines protect + adminOnly in one middleware
 exports.adminRouteGuard = (req, res, next) => {
   let token = req.headers.authorization;

@@ -29,6 +29,20 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const carRoutes = require('./routes/carRoutes');
 
+const sellerRoutes = require('./routes/sellerRoutes');
+app.use('/api/seller', sellerRoutes);
+
+
+// 1. API lấy danh sách xe
+app.get('/api/cars', async (req, res) => {
+  try {
+    const cars = await Car.find({});
+    // App đang dùng axios và expect res.data là mảng cars
+    res.json(cars);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu xe' });
+  }
 // --- API ENDPOINTS ---
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);

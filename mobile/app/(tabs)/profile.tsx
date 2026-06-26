@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, Image, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Mail, ShieldAlert, LogOut, ShieldCheck, CreditCard } from 'lucide-react-native';
+import { User, Mail, ShieldAlert, LogOut, ShieldCheck, CreditCard, Car } from 'lucide-react-native';
 import { LuxuryColors, LuxuryTypography, LuxuryRadius, LuxurySpacing } from '@/constants/luxuryTheme';
 import { getStoredUser, clearUser, StoredUser } from '@/services/storage';
 import GlassCard from '@/components/GlassCard';
@@ -73,6 +73,15 @@ export default function ProfileScreen() {
               <Text style={styles.menuItemText}>Security Preferences</Text>
             </View>
           </PremiumPressable>
+
+          {user?.role !== 'seller' && user?.role !== 'admin' && (
+            <PremiumPressable style={styles.menuItem} onPress={() => router.push('/(auth)/register-seller')}>
+              <View style={styles.menuItemLeft}>
+                <Car size={18} color={LuxuryColors.accent} />
+                <Text style={styles.menuItemText}>Become a Fleet Owner</Text>
+              </View>
+            </PremiumPressable>
+          )}
         </View>
 
         {/* Logout Button */}
