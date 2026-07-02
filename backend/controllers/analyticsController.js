@@ -34,13 +34,17 @@ exports.getDashboardStats = async (req, res) => {
       status: 'Completed'
     });
     
+    const platformCommission = Math.round(revenue * 0.1);
+
     res.json({
       totalUsers,
       activeUsers,
       totalCars,
       totalBookings,
       revenue: Math.round(revenue),
-      monthlyBookings
+      monthlyBookings,
+      platformCommission,
+      commissionRate: 10
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -98,11 +102,15 @@ exports.getBookingStatistics = async (req, res) => {
       { $limit: 12 }
     ]);
     
+    const platformCommission = Math.round(totalRevenue * 0.1);
+
     res.json({
       totalBookings,
       bookingsByStatus: statusMap,
       totalRevenue: Math.round(totalRevenue),
-      monthlyRevenue
+      monthlyRevenue,
+      platformCommission,
+      commissionRate: 10
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

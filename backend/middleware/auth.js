@@ -46,3 +46,37 @@ exports.adminRouteGuard = (req, res, next) => {
     res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
+
+exports.adminReadOnlyGuard = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return next();
+  }
+
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: 'Admin access is read-only for this resource'
+  });
+};
+
+exports.sellerOrAdminRouteGuard = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
+  }
+
+  if (req.user.role === 'seller') {
+    return next();
+  }
+
+  if (req.user.role === 'admin') {
+    return res.status(403).json({ message: 'Admin access is read-only for this resource' });
+  }
+
+  return res.status(403).json({ message: 'Not authorized as seller' });
+};

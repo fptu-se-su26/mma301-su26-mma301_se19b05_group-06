@@ -10,7 +10,7 @@ import {
   LuxuryTypography, 
   LuxuryRadius 
 } from '@/constants/luxuryTheme';
-import { getAllBookingsAPI, updateBookingStatusAPI, completeBookingAPI } from '@/services/api';
+import { getAllBookingsAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 import { useAdminGuard } from '@/middleware/adminGuard';
@@ -44,37 +44,8 @@ const AdminBookingsScreen = () => {
     return bookings.filter(b => b.status === activeFilter);
   }, [bookings, activeFilter]);
 
-  const handleStatusUpdate = async (id: string, status: string) => {
-    try {
-      await updateBookingStatusAPI(id, status);
-      loadBookings();
-    } catch (error) {
-      Alert.alert('System Error', 'Could not update reservation status.');
-    }
-  };
-
-  const handleComplete = async (id: string) => {
-    Alert.alert(
-      'Complete Booking',
-      'Mark this booking as completed (car returned)?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              const { data } = await completeBookingAPI(id);
-              if (data.lateFee > 0) {
-                Alert.alert('Booking Completed', `Late fee applied: $${data.lateFee}. Updated total: $${data.totalPrice}`);
-              }
-              loadBookings();
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Could not complete booking.');
-            }
-          }
-        }
-      ]
-    );
+  const handleReadOnlyNotice = () => {
+    Alert.alert('Read-only access', 'Admin can view booking details only. Booking updates are restricted.');
   };
 
   if (loading && bookings.length === 0) {
@@ -221,32 +192,15 @@ const AdminBookingsScreen = () => {
                       </Text>
                     </View>
                     
-                    {b.status === 'Pending' && (
-                      <View style={styles.actions}>
-                        <View style={styles.pendingInfo}>
-                          <Clock size={13} color={LuxuryColors.accent} />
-                          <Text style={styles.pendingInfoText}>Chờ QR</Text>
-                        </View>
-                        <PremiumPressable 
-                          onPress={() => handleStatusUpdate(b._id, 'Cancelled')} 
-                          style={[styles.actionBtn, styles.cancelActionBtn]}
-                        >
-                          <XCircle size={16} color={LuxuryColors.danger} />
-                        </PremiumPressable>
-                      </View>
-                    )}
-
-                    {b.status === 'Approved' && (
-                      <View style={styles.actions}>
-                        <PremiumPressable 
-                          onPress={() => handleComplete(b._id)} 
-                          style={[styles.actionBtn, styles.completeBtn]}
-                        >
-                          <RotateCcw size={16} color={LuxuryColors.background} />
-                          <Text style={styles.approveBtnText}>Trả xe</Text>
-                        </PremiumPressable>
-                      </View>
-                    )}
+                    <View style={styles.actions}>
+                      <PremiumPressable 
+                        onPress={handleReadOnlyNotice}
+                        style={[styles.actionBtn, styles.completeBtn]}
+                      >
+                        <Clock size={16} color={LuxuryColors.background} />
+                        <Text style={styles.approveBtnText}>View Only</Text>
+                      </PremiumPressable>
+                    </View>
 
                     {b.status === 'Completed' && b.lateFee > 0 && (
                       <View style={styles.lateFeeBox}>

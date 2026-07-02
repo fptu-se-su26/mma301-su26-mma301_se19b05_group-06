@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, Image, StatusBar, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
-import { Plus, Trash2, MapPin, Gauge, Star, Filter, Pencil, ChevronLeft } from 'lucide-react-native';
+import { MapPin, Gauge, Star, Filter, ChevronLeft } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 
 import { 
@@ -10,7 +10,7 @@ import {
   LuxuryTypography, 
   LuxuryRadius 
 } from '@/constants/luxuryTheme';
-import { getCarsAPI, deleteCarAPI } from '@/services/api';
+import { getCarsAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 import { useAdminGuard } from '@/middleware/adminGuard';
@@ -44,20 +44,6 @@ const AdminCarsScreen = () => {
     }, [])
   );
 
-  const handleDelete = async (id: string, name: string) => {
-    Alert.alert('Decommission Vehicle', `Are you certain you wish to completely remove the ${name} from the active fleet collection?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Decommission', style: 'destructive', onPress: async () => {
-        try {
-          await deleteCarAPI(id);
-          loadCars();
-        } catch (error) {
-          Alert.alert('System Error', 'Could not complete decompression process.');
-        }
-      } }
-    ]);
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -78,12 +64,6 @@ const AdminCarsScreen = () => {
             <Text style={styles.title}>Fleet Inventory</Text>
             <Text style={styles.subtitle}>Curate and manage your ultimate collection</Text>
           </View>
-          <PremiumPressable 
-            onPress={() => router.push('/admin-car-form' as any)}
-            style={styles.addBtn}
-          >
-            <Plus size={20} color={LuxuryColors.background} />
-          </PremiumPressable>
         </View>
 
         <View style={styles.filterBar}>
@@ -128,20 +108,7 @@ const AdminCarsScreen = () => {
                       <Text style={styles.priceText}>
                         ${c.pricePerDay} <Text style={styles.perDay}>/day</Text>
                       </Text>
-                      <View style={styles.footerActions}>
-                        <PremiumPressable 
-                          onPress={() => router.push({ pathname: '/admin-car-form' as any, params: { editId: c._id } })}
-                          style={styles.editBtn}
-                        >
-                          <Pencil size={14} color={LuxuryColors.accent} />
-                        </PremiumPressable>
-                        <PremiumPressable 
-                          onPress={() => handleDelete(c._id, c.name)} 
-                          style={styles.deleteBtn}
-                        >
-                          <Trash2 size={16} color={LuxuryColors.danger} />
-                        </PremiumPressable>
-                      </View>
+                      <Text style={styles.readOnlyBadge}>VIEW ONLY</Text>
                     </View>
                 </View>
               </GlassCard>
@@ -192,13 +159,11 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
   },
-  addBtn: {
-    backgroundColor: LuxuryColors.accent,
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+  readOnlyBadge: {
+    fontSize: 11,
+    color: LuxuryColors.accent,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
   filterBar: {
     flexDirection: 'row',

@@ -43,10 +43,10 @@ export default function AdminLayout() {
       <Stack.Screen name="bookings" />
       <Stack.Screen name="payments" />
       <Stack.Screen name="analytics" />
-      <Stack.Screen name="pricing" />
       <Stack.Screen name="cars" />
       <Stack.Screen name="availability" />
       <Stack.Screen name="calendar" />
+      <Stack.Screen name="seller-requests" />
     </Stack>
   );
 }

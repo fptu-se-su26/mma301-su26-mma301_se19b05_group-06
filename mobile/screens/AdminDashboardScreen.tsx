@@ -20,7 +20,8 @@ import {
   LogOut,
   BarChart3,
   CreditCard,
-  Zap
+  BadgeCheck,
+  HandCoins
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -137,6 +138,11 @@ const AdminDashboardScreen = () => {
       label: 'Revenue',
       value: `$${(stats.revenue || 0).toLocaleString()}`,
       icon: <DollarSign size={18} color={LuxuryColors.accent} />
+    },
+    {
+      label: 'Platform Fee (10%)',
+      value: `$${(stats.platformCommission || 0).toLocaleString()}`,
+      icon: <HandCoins size={18} color={LuxuryColors.accent} />
     }
   ];
 
@@ -170,18 +176,18 @@ const AdminDashboardScreen = () => {
       items: 'Revenue, stats, trends'
     },
     {
-      title: 'Pricing Surge Analytics',
-      description: 'Monitor dynamic pricing and demand',
-      icon: <Zap size={24} color={LuxuryColors.accent} />,
-      onPress: () => router.push('/(admin)/pricing'),
-      items: 'Real-time surge analysis'
-    },
-    {
       title: 'Fleet Management',
-      description: 'Manage cars and availability',
+      description: 'View available cars and fleet info',
       icon: <Car size={24} color={LuxuryColors.accent} />,
       onPress: () => router.push('/(admin)/cars'),
       items: `${stats.totalCars || 0} vehicles`
+    },
+    {
+      title: 'Seller Requests',
+      description: 'Approve or decline seller onboarding requests',
+      icon: <BadgeCheck size={24} color={LuxuryColors.accent} />,
+      onPress: () => router.push('/(admin)/seller-requests'),
+      items: 'Pending review'
     }
   ];
 
