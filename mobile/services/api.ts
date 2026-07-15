@@ -4,8 +4,9 @@ import { Platform } from 'react-native';
 
 const getBaseURL = () => {
   const envURL = process.env.EXPO_PUBLIC_API_URL;
-  if ((Platform.OS as any) === 'web') return 'http://localhost:5000/api';
- return envURL || 'http://192.168.100.109:5000/api';
+  if (Platform.OS === 'web') return 'http://localhost:5000/api';
+  if (Platform.OS === 'android' && !envURL) return 'http://10.0.2.2:5000/api';
+  return envURL || 'http://192.168.110.178:5000/api';
 };
 
 const API = axios.create({ baseURL: getBaseURL(), timeout: 30000 });
@@ -115,6 +116,14 @@ export const extendBookingAPI = (id: string, newReturnDate: string) =>
 export const cancelBookingAPI = (id: string) =>
   API.patch(`/bookings/${id}/cancel`);
 
+// ─── USER PAYMENTS ────────────────────────────────────────────────────────────
+// Tạo PayOS payment link (thanh toán tự động)
+export const createPaymentLinkAPI = (bookingId: string) =>
+  API.post('/payments/create-link', { bookingId });
+
+export const getPaymentHistoryAPI = () =>
+  API.get('/payments/history');
+
 // ─── REVIEWS ──────────────────────────────────────────────────────────────────
 export const getReviewsByCarAPI = (carId: string) =>
   API.get(`/reviews/car/${carId}`);
@@ -163,7 +172,7 @@ export const completeBookingAPI = (id: string) =>
   API.patch(`/admin/bookings/${id}/complete`);
 
 export const deleteBookingAPI = (id: string) =>
-  API.delete(`/admin/bookings/${id}`);
+  API.delete(`/bookings/${id}`);
 
 // ─── ADMIN PAYMENTS ───────────────────────────────────────────────────────────
 export const confirmPaymentAPI = (bookingId: string) =>
@@ -190,7 +199,7 @@ export const deleteCarAPI = (id: string) => API.delete(`/cars/${id}`);
 export const getAnalyticsAPI = (period: 'day' | 'month' = 'month') =>
   API.get(`/admin/analytics?period=${period}`);
 
-export const getPricingSurgesAPI = () => 
+export const getPricingSurgesAPI = () =>
   API.get('/admin/pricing-surges');
 
 export const getAdminAnalyticsAPI = (period: 'day' | 'month') =>

@@ -22,7 +22,7 @@ app.use((err, req, res, next) => {
 // MongoDB Connection
 const uri = process.env.MONGODB_URI || 'mongodb+srv://tranchan:1t2r3a4a5n6f@cluster0.8dmrtdn.mongodb.net/car-rental';
 
-// --- ROUTE IMPORTS ---
+// --- ROUTE IMPORTS --
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
@@ -30,20 +30,9 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const carRoutes = require('./routes/carRoutes');
 
 const sellerRoutes = require('./routes/sellerRoutes');
-app.use('/api/seller', sellerRoutes);
 
-
-// 1. API lấy danh sách xe
-app.get('/api/cars', async (req, res) => {
-  try {
-    const cars = await Car.find({});
-    // App đang dùng axios và expect res.data là mảng cars
-    res.json(cars);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu xe' });
-  }
 // --- API ENDPOINTS ---
+app.use('/api/seller', sellerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -52,14 +41,21 @@ app.use('/api/cars', carRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'Server is running' });
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = dbState === 1 ? 'connected' : 'disconnected';
+  res.json({
+    status: 'Server is running',
+    database: dbStatus,
+    dbName: mongoose.connection.name || null,
+  });
 });
 
 // Start Server
 mongoose.connect(uri).then(() => {
   console.log(`✅ Đã kết nối MongoDB (Database: ${mongoose.connection.name})`);
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
+    console.log(`🌐 LAN access: http://<your-ip>:${PORT}`);
   });
 }).catch(err => {
   console.error('❌ Kết nối MongoDB thất bại:', err);

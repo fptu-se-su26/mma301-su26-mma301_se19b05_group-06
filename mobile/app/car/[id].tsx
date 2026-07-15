@@ -11,6 +11,7 @@ import {
   StatusBar,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,8 +31,11 @@ import {
   RotateCcw,
   Tag,
   Award,
+  CreditCard,
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 import {
   LuxuryColors,
@@ -39,7 +43,7 @@ import {
   LuxuryTypography,
   LuxuryRadius,
 } from '@/constants/luxuryTheme';
-import { getCarByIdAPI, createBookingAPI, applyVoucherAPI } from '@/services/api';
+import { getCarByIdAPI, createBookingAPI, applyVoucherAPI, createPaymentLinkAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 
@@ -144,7 +148,7 @@ export default function CarDetailScreen() {
   const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  
+
   // Date Picker States
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
@@ -158,9 +162,11 @@ export default function CarDetailScreen() {
   const [promoMessage, setPromoMessage] = useState('');
   const [promoSuccess, setPromoSuccess] = useState<boolean | null>(null);
 
+  // Payment method — chỉ hỗ trợ online (bank_transfer)
+  const paymentMethod = 'bank_transfer' as const;
+
   // Booking submission states
   const [bookingLoading, setBookingLoading] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     const fetchCarDetails = async () => {
@@ -238,27 +244,58 @@ export default function CarDetailScreen() {
   };
 
   const handleConfirmBooking = async () => {
+    if (!startDate || !endDate) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng chọn ngày nhận và ngày trả xe.');
+      return;
+    }
     setBookingLoading(true);
     try {
       const payload = {
         carId: car._id,
         startDate: startDate,
         endDate: endDate,
+        pickupDate: startDate,
+        returnDate: endDate,
         totalPrice: finalPrice,
+        paymentMethod: 'bank_transfer',
+        customerName: car.customerName || '',
+        customerEmail: car.customerEmail || '',
+        customerPhone: car.customerPhone || '',
+        pickupLocation: car.location || 'LuxeRide Hub',
+        dropoffLocation: car.location || 'LuxeRide Hub',
       };
-      await createBookingAPI(payload);
-      setBookingLoading(false);
+      
+      // 1. Tạo Booking
+      const response = await createBookingAPI(payload);
+      const bookingId = response?.data?._id;
+      
+      if (!bookingId) throw new Error('Không thể tạo mã booking');
+
+      // 2. Tạo PayOS Link
+      const paymentResponse = await createPaymentLinkAPI(bookingId);
+      const checkoutUrl = paymentResponse?.data?.checkoutUrl;
+
+      if (!checkoutUrl) throw new Error('Không thể tạo link thanh toán PayOS');
+
       setIsBookingModalVisible(false);
-      setShowSuccessModal(true);
-    } catch (error) {
-      console.warn('API error creating booking, running offline simulator');
-      setTimeout(() => {
-        setBookingLoading(false);
-        setIsBookingModalVisible(false);
-        setShowSuccessModal(true);
-      }, 1500);
+      setBookingLoading(false);
+
+      // 3. Mở trình duyệt thanh toán
+      const redirectUrl = Linking.createURL('bookings');
+      const browserResult = await WebBrowser.openAuthSessionAsync(checkoutUrl, redirectUrl);
+
+      // Dù kết quả là success hay cancel, đưa user về trang danh sách booking
+      router.replace('/(tabs)/bookings');
+
+    } catch (error: any) {
+      setBookingLoading(false);
+      const msg = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Không thể tạo đặt xe. Vui lòng thử lại.';
+      Alert.alert('❌ Lỗi đặt xe', msg);
     }
   };
+
+  // Hàm handleConfirmPayment (không dùng nữa vì đã auto webhook)
+  const handleConfirmPayment = () => {};
 
   if (loading) {
     return (
@@ -289,7 +326,7 @@ export default function CarDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" translucent />
-      
+
       {/* HEADER SECTION */}
       <View style={styles.header}>
         <PremiumPressable onPress={() => router.back()} style={styles.backBtn}>
@@ -341,7 +378,7 @@ export default function CarDetailScreen() {
               <Text style={styles.specVal}>{car.seats || 4}</Text>
               <Text style={styles.specLab}>SEATS</Text>
             </View>
-            
+
             <View style={styles.specCard}>
               <Gauge size={16} color={LuxuryColors.accent} />
               <Text style={styles.specVal}>{car.transmission === 'Automatic' ? 'Auto' : 'Manual'}</Text>
@@ -425,7 +462,7 @@ export default function CarDetailScreen() {
             {car.pricePerDay.toLocaleString()} <Text style={styles.tariffUnit}>VNĐ/d</Text>
           </Text>
         </View>
-        
+
         <PremiumPressable onPress={openBookingModal} style={styles.bookBtn}>
           <Text style={styles.bookBtnText}>RESERVE VEHICLE</Text>
         </PremiumPressable>
@@ -467,59 +504,122 @@ export default function CarDetailScreen() {
               {/* DATE PICKERS */}
               <View style={styles.pickerSection}>
                 <Text style={styles.pickerLabel}>SELECT SCHEDULE</Text>
-                
-                <View style={styles.dateButtonsRow}>
-                  {/* Start Date Button */}
-                  <PremiumPressable onPress={() => setShowStartPicker(true)} style={styles.dateSelectorBtn}>
-                    <Text style={styles.dateSelectorLabel}>START DATE</Text>
-                    <Text style={styles.dateSelectorVal}>{startDate || 'Chọn ngày'}</Text>
-                  </PremiumPressable>
 
-                  {/* End Date Button */}
-                  <PremiumPressable onPress={() => setShowEndPicker(true)} style={styles.dateSelectorBtn}>
-                    <Text style={styles.dateSelectorLabel}>RETURN DATE</Text>
-                    <Text style={styles.dateSelectorVal}>{endDate || 'Chọn ngày'}</Text>
-                  </PremiumPressable>
-                </View>
+                {Platform.OS === 'web' ? (
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...LuxuryTypography.tiny, color: LuxuryColors.textSecondary, marginBottom: 4 }}>START DATE</Text>
+                      <input
+                        type="date"
+                        value={startDate}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStartDate(val);
+                          const [y, m, d] = val.split('-').map(Number);
+                          const selectedDate = new Date(y, m - 1, d);
+                          setStartDateObj(selectedDate);
+                          if (endDateObj <= selectedDate) {
+                            const nextDay = new Date(selectedDate.getTime() + 86400000);
+                            setEndDateObj(nextDay);
+                            setEndDate(nextDay.toISOString().split('T')[0]);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          color: '#FFF',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          padding: 12,
+                          outline: 'none',
+                          fontSize: 14,
+                          width: '100%',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...LuxuryTypography.tiny, color: LuxuryColors.textSecondary, marginBottom: 4 }}>RETURN DATE</Text>
+                      <input
+                        type="date"
+                        value={endDate}
+                        min={startDate ? new Date(new Date(startDate).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEndDate(val);
+                          const [y, m, d] = val.split('-').map(Number);
+                          setEndDateObj(new Date(y, m - 1, d));
+                        }}
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          color: '#FFF',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          padding: 12,
+                          outline: 'none',
+                          fontSize: 14,
+                          width: '100%',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.dateButtonsRow}>
+                      {/* Start Date Button */}
+                      <PremiumPressable onPress={() => setShowStartPicker(true)} style={styles.dateSelectorBtn}>
+                        <Text style={styles.dateSelectorLabel}>START DATE</Text>
+                        <Text style={styles.dateSelectorVal}>{startDate || 'Chọn ngày'}</Text>
+                      </PremiumPressable>
 
-                {/* Expo DateTimePicker for Start Date */}
-                {showStartPicker && (
-                  <DateTimePicker
-                    value={startDateObj}
-                    mode="date"
-                    display="default"
-                    minimumDate={new Date()}
-                    onChange={(event, selectedDate) => {
-                      setShowStartPicker(false);
-                      if (selectedDate) {
-                        setStartDateObj(selectedDate);
-                        setStartDate(selectedDate.toISOString().split('T')[0]);
-                        // Enforce end date to be at least start date + 1 day
-                        if (endDateObj <= selectedDate) {
-                          const nextDay = new Date(selectedDate.getTime() + 86400000);
-                          setEndDateObj(nextDay);
-                          setEndDate(nextDay.toISOString().split('T')[0]);
-                        }
-                      }
-                    }}
-                  />
-                )}
+                      {/* End Date Button */}
+                      <PremiumPressable onPress={() => setShowEndPicker(true)} style={styles.dateSelectorBtn}>
+                        <Text style={styles.dateSelectorLabel}>RETURN DATE</Text>
+                        <Text style={styles.dateSelectorVal}>{endDate || 'Chọn ngày'}</Text>
+                      </PremiumPressable>
+                    </View>
 
-                {/* Expo DateTimePicker for End Date */}
-                {showEndPicker && (
-                  <DateTimePicker
-                    value={endDateObj}
-                    mode="date"
-                    display="default"
-                    minimumDate={new Date(startDateObj.getTime() + 86400000)}
-                    onChange={(event, selectedDate) => {
-                      setShowEndPicker(false);
-                      if (selectedDate) {
-                        setEndDateObj(selectedDate);
-                        setEndDate(selectedDate.toISOString().split('T')[0]);
-                      }
-                    }}
-                  />
+                    {/* Expo DateTimePicker for Start Date */}
+                    {showStartPicker && (
+                      <DateTimePicker
+                        value={startDateObj}
+                        mode="date"
+                        display="default"
+                        minimumDate={new Date()}
+                        onChange={(event, selectedDate) => {
+                          setShowStartPicker(false);
+                          if (selectedDate) {
+                            setStartDateObj(selectedDate);
+                            setStartDate(selectedDate.toISOString().split('T')[0]);
+                            // Enforce end date to be at least start date + 1 day
+                            if (endDateObj <= selectedDate) {
+                              const nextDay = new Date(selectedDate.getTime() + 86400000);
+                              setEndDateObj(nextDay);
+                              setEndDate(nextDay.toISOString().split('T')[0]);
+                            }
+                          }
+                        }}
+                      />
+                    )}
+
+                    {/* Expo DateTimePicker for End Date */}
+                    {showEndPicker && (
+                      <DateTimePicker
+                        value={endDateObj}
+                        mode="date"
+                        display="default"
+                        minimumDate={new Date(startDateObj.getTime() + 86400000)}
+                        onChange={(event, selectedDate) => {
+                          setShowEndPicker(false);
+                          if (selectedDate) {
+                            setEndDateObj(selectedDate);
+                            setEndDate(selectedDate.toISOString().split('T')[0]);
+                          }
+                        }}
+                      />
+                    )}
+                  </>
                 )}
               </View>
 
@@ -552,6 +652,49 @@ export default function CarDetailScreen() {
                     {promoMessage}
                   </Text>
                 )}
+              </View>
+
+              {/* PAYMENT METHOD SELECTION */}
+              <View style={styles.paymentSection}>
+                <Text style={styles.pickerLabel}>PAYMENT METHOD</Text>
+                <View style={styles.paymentMethodsContainer}>
+                  {[
+                    { key: 'bank_transfer' as const, label: 'Chuyển khoản Online', sublabel: 'Quét mã VietQR chuyển khoản nhanh', icon: CreditCard, color: '#818cf8' },
+                  ].map((method) => {
+                    const isActive = paymentMethod === method.key;
+                    const IconComp = method.icon;
+                    return (
+                      <PremiumPressable
+                        key={method.key}
+                        onPress={() => setPaymentMethod(method.key)}
+                        style={[
+                          styles.paymentMethodCard,
+                          isActive && { borderColor: method.color, backgroundColor: `${method.color}15` },
+                        ]}
+                      >
+                        <View style={[
+                          styles.paymentMethodIcon,
+                          isActive && { backgroundColor: `${method.color}25` },
+                        ]}>
+                          <IconComp size={18} color={isActive ? method.color : LuxuryColors.textMuted} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[
+                            styles.paymentMethodLabel,
+                            isActive && { color: '#FFF' },
+                          ]}>{method.label}</Text>
+                          <Text style={styles.paymentMethodSublabel}>{method.sublabel}</Text>
+                        </View>
+                        <View style={[
+                          styles.paymentRadio,
+                          isActive && { borderColor: method.color, backgroundColor: method.color },
+                        ]}>
+                          {isActive && <Check size={10} color="#FFF" strokeWidth={3} />}
+                        </View>
+                      </PremiumPressable>
+                    );
+                  })}
+                </View>
               </View>
 
               {/* BUDGET BILL SUMMARY */}
@@ -615,43 +758,6 @@ export default function CarDetailScreen() {
         </View>
       </Modal>
 
-      {/* SUCCESS MODAL */}
-      <Modal
-        visible={showSuccessModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSuccessModal(false)}
-      >
-        <View style={styles.successOverlay}>
-          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
-
-          <GlassCard style={styles.successCard}>
-            <View style={styles.successIconCircle}>
-              <Check size={40} color={LuxuryColors.background} strokeWidth={3} />
-            </View>
-
-            <Text style={styles.successTitle}>RESERVATION SECURED</Text>
-            <Text style={styles.successMsg}>
-              Your luxury fleet selection has been successfully reserved. The garage concierge has prepared your pass.
-            </Text>
-
-            <View style={styles.successInfoPill}>
-              <Award size={14} color={LuxuryColors.accent} />
-              <Text style={styles.successInfoText}>{car.brand} {car.model}</Text>
-            </View>
-
-            <PremiumPressable
-              onPress={() => {
-                setShowSuccessModal(false);
-                router.replace('/(tabs)/bookings');
-              }}
-              style={styles.successOkBtn}
-            >
-              <Text style={styles.successOkBtnText}>VIEW RESERVATIONS</Text>
-            </PremiumPressable>
-          </GlassCard>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1207,5 +1313,77 @@ const styles = StyleSheet.create({
     color: LuxuryColors.background,
     fontSize: 10,
     fontWeight: '900',
+  },
+  // ─── Payment Method Styles ───────────────────────────────────
+  paymentSection: {
+    marginTop: 16,
+  },
+  paymentMethodsContainer: {
+    gap: 10,
+  },
+  paymentMethodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: LuxuryRadius.md,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  paymentMethodIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paymentMethodLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LuxuryColors.textSecondary,
+  },
+  paymentMethodSublabel: {
+    fontSize: 10,
+    color: LuxuryColors.textMuted,
+    marginTop: 2,
+  },
+  paymentRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ─── Payment Info (Success Modal) ────────────────────────────
+  paymentInfoCard: {
+    width: '100%',
+    padding: 16,
+    gap: 8,
+  },
+  paymentInfoTitle: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.accent,
+    fontSize: 9,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  paymentInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  paymentInfoLabel: {
+    fontSize: 11,
+    color: LuxuryColors.textMuted,
+  },
+  paymentInfoValue: {
+    fontSize: 12,
+    color: '#FFF',
+    fontWeight: '700',
   },
 });

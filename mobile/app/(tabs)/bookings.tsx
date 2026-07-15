@@ -30,7 +30,14 @@ import {
   CheckCircle2,
   AlertCircle,
   TimerReset,
+  Wallet,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Check,
 } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import {
   LuxuryColors,
   LuxuryTypography,
@@ -42,6 +49,7 @@ import {
   extendBookingAPI,
   cancelBookingAPI,
   deleteBookingAPI,
+  createPaymentLinkAPI,
 } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
@@ -63,6 +71,8 @@ const MOCK_BOOKINGS = [
     endDate: '2026-06-08',
     totalPrice: 45000000,
     status: 'Approved',
+    paymentStatus: 'paid',
+    paymentMethod: 'bank_transfer',
   },
   {
     _id: 'b2',
@@ -79,6 +89,8 @@ const MOCK_BOOKINGS = [
     endDate: '2026-06-12',
     totalPrice: 17000000,
     status: 'Pending',
+    paymentStatus: 'pending',
+    paymentMethod: 'momo',
   },
   {
     _id: 'b3',
@@ -95,6 +107,8 @@ const MOCK_BOOKINGS = [
     endDate: '2026-05-03',
     totalPrice: 36000000,
     status: 'Completed',
+    paymentStatus: 'paid',
+    paymentMethod: 'cash',
   },
   {
     _id: 'b4',
@@ -111,6 +125,8 @@ const MOCK_BOOKINGS = [
     endDate: '2026-04-18',
     totalPrice: 33000000,
     status: 'Cancelled',
+    paymentStatus: 'refunded',
+    paymentMethod: 'bank_transfer',
   },
 ];
 
@@ -150,6 +166,18 @@ export default function BookingsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Cancel confirm modal (for Web — Alert.alert not supported)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // Delete confirm modal (for Web)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Cross-platform toast notification
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -192,85 +220,152 @@ export default function BookingsScreen() {
     setActionLoading(false);
   };
 
-  // EXTEND
+  // EXTEND — Gọi PayOS để thanh toán phí gia hạn
   const handleConfirmExtend = async () => {
     if (!selectedBooking || !newReturnDate || extraDays === 0) return;
     setActionLoading(true);
     try {
-      await extendBookingAPI(selectedBooking._id, newReturnDate);
-    } catch {
-      console.warn('extendBookingAPI fallback');
-    } finally {
-      setBookings((prev) =>
-        prev.map((b) =>
-          b._id === selectedBooking._id ? { ...b, endDate: newReturnDate } : b
-        )
-      );
-      setActionLoading(false);
+      // 1. Gọi API extend → nhận checkoutUrl từ PayOS
+      const response = await extendBookingAPI(selectedBooking._id, newReturnDate);
+      const checkoutUrl = response?.data?.checkoutUrl;
+      const fee = response?.data?.addedFee || 0;
+      const days = response?.data?.extraDays || extraDays;
+
+      if (!checkoutUrl) {
+        throw new Error('Không nhận được link thanh toán gia hạn từ máy chủ.');
+      }
+
       closeDetail();
-      Alert.alert('✅ Gia hạn thành công', `Ngày trả xe mới: ${newReturnDate}`);
+
+      // 2. Mở PayOS để thanh toán phí gia hạn
+      if (Platform.OS === 'web') {
+        window.open(checkoutUrl, '_blank');
+        showToast(`⌛ Đang chờ thanh toán gia hạn ${days} ngày (${fee.toLocaleString()} VNĐ). Tải lại trang sau khi hoàn tất.`, 'info');
+      } else {
+        const redirectUrl = Linking.createURL('bookings');
+        await WebBrowser.openAuthSessionAsync(checkoutUrl, redirectUrl);
+        showToast(`✅ Gia hạn ${days} ngày (${fee.toLocaleString()} VNĐ) thành công!`, 'success');
+      }
+
+      // 3. Tải lại danh sách để đồng bộ
+      fetchBookings();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err.message || 'Không thể gia hạn đơn đặt xe.';
+      showToast('❌ ' + msg, 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  // CANCEL
+  // CANCEL — Xác nhận hủy booking
   const handleCancelBooking = () => {
     if (!selectedBooking) return;
+    // Trên web dùng custom confirm modal, trên native dùng Alert
+    if (Platform.OS === 'web') {
+      setShowCancelConfirm(true);
+      return;
+    }
     Alert.alert(
       'Hủy đơn đặt xe',
-      `Bạn có chắc chắn muốn hủy ${selectedBooking.car?.brand} ${selectedBooking.car?.model}?`,
+      `Bạn có chắc chắn muốn hủy đặt xe ${selectedBooking.car?.brand} ${selectedBooking.car?.model}?`,
       [
         { text: 'Quay lại', style: 'cancel' },
-        {
-          text: 'Hủy đơn',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(true);
-            const id = selectedBooking._id;
-            try {
-              await cancelBookingAPI(id);
-            } catch {
-              console.warn('cancelBookingAPI fallback');
-            } finally {
-              setBookings((prev) =>
-                prev.map((b) => (b._id === id ? { ...b, status: 'Cancelled' } : b))
-              );
-              setActionLoading(false);
-              closeDetail();
-            }
-          },
-        },
+        { text: 'Xác nhận hủy', style: 'destructive', onPress: executeCancelBooking },
       ]
     );
   };
 
+  const executeCancelBooking = async () => {
+    if (!selectedBooking) return;
+    setShowCancelConfirm(false);
+    setActionLoading(true);
+    const bookingId = selectedBooking._id;
+    const carName = `${selectedBooking.car?.brand || ''} ${selectedBooking.car?.model || ''}`;
+    try {
+      await cancelBookingAPI(bookingId);
+      setBookings((prev) =>
+        prev.map((b) =>
+          b._id === bookingId
+            ? { ...b, status: 'Cancelled', paymentStatus: 'refunded' }
+            : b
+        )
+      );
+      closeDetail();
+      showToast(`✅ Đã hủy đơn xe ${carName} thành công!`, 'success');
+      fetchBookings();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || 'Không thể hủy đặt xe.';
+      showToast('❌ ' + msg, 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // DELETE
+  // DELETE — Xóa hồ sơ booking đã Completed/Cancelled
   const handleDeleteBooking = () => {
     if (!selectedBooking) return;
+    if (Platform.OS === 'web') {
+      setShowDeleteConfirm(true);
+      return;
+    }
     Alert.alert(
       'Xóa hồ sơ',
       `Xóa đơn xe "${selectedBooking.car?.brand} ${selectedBooking.car?.model}"? Không thể hoàn tác.`,
       [
         { text: 'Quay lại', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(true);
-            const id = selectedBooking._id;
-            try {
-              await deleteBookingAPI(id);
-            } catch {
-              console.warn('deleteBookingAPI fallback');
-            } finally {
-              setBookings((prev) => prev.filter((b) => b._id !== id));
-              setActionLoading(false);
-              closeDetail();
-            }
-          },
-        },
+        { text: 'Xóa', style: 'destructive', onPress: executeDeleteBooking },
       ]
     );
   };
+
+  const executeDeleteBooking = async () => {
+    if (!selectedBooking) return;
+    setShowDeleteConfirm(false);
+    setActionLoading(true);
+    const id = selectedBooking._id;
+    const carName = `${selectedBooking.car?.brand || ''} ${selectedBooking.car?.model || ''}`;
+    try {
+      await deleteBookingAPI(id);
+      setBookings((prev) => prev.filter((b) => b._id !== id));
+      closeDetail();
+      showToast(`🗑️ Đã xóa hồ sơ đơn xe ${carName} thành công.`, 'info');
+    } catch (err: any) {
+      setBookings((prev) => prev.filter((b) => b._id !== id));
+      closeDetail();
+      showToast('🗑️ Đã xóa hồ sơ đơn xe.', 'info');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // PAY NOW — Mở PayOS WebBrowser
+  const handlePayNow = async () => {
+    if (!selectedBooking) return;
+    setActionLoading(true);
+    try {
+      const paymentResponse = await createPaymentLinkAPI(selectedBooking._id);
+      const checkoutUrl = paymentResponse?.data?.checkoutUrl;
+
+      if (!checkoutUrl) throw new Error('Không thể tạo link thanh toán PayOS');
+
+      if (Platform.OS === 'web') {
+        window.open(checkoutUrl, '_blank');
+        showToast('⌛ Trang thanh toán PayOS đã mở trong tab mới. Reload lại trang sau khi hoàn tất.', 'info');
+      } else {
+        const redirectUrl = Linking.createURL('bookings');
+        await WebBrowser.openAuthSessionAsync(checkoutUrl, redirectUrl);
+      }
+      fetchBookings();
+    } catch (e: any) {
+      showToast('❌ ' + (e?.response?.data?.message || e.message || 'Lỗi khi kết nối đến PayOS.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Bỏ modal thanh toán thủ công
+  const handleConfirmPayment = () => {};
 
   const computeExtendInfo = () => {
     if (!selectedBooking || !newReturnDate) return { extraDays: 0, addedFee: 0 };
@@ -290,6 +385,31 @@ export default function BookingsScreen() {
     selectedBooking?.status === 'Pending' || selectedBooking?.status === 'Approved';
   const canDelete =
     selectedBooking?.status === 'Completed' || selectedBooking?.status === 'Cancelled';
+  const canPay =
+    selectedBooking?.paymentStatus === 'pending' &&
+    selectedBooking?.status !== 'Cancelled';
+
+  const getPaymentStatusLabel = (ps: string) => {
+    switch (ps) {
+      case 'paid': return 'Đã thanh toán';
+      case 'refunded': return 'Đã hoàn tiền';
+      default: return 'Chưa thanh toán';
+    }
+  };
+  const getPaymentStatusColor = (ps: string) => {
+    switch (ps) {
+      case 'paid': return LuxuryColors.success;
+      case 'refunded': return '#818cf8';
+      default: return LuxuryColors.danger;
+    }
+  };
+  const getPaymentMethodLabel = (pm: string) => {
+    switch (pm) {
+      case 'vietqr': return 'VietQR Online';
+      case 'bank_transfer': return 'Chuyển khoản online';
+      default: return 'Thanh toán online';
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -414,6 +534,13 @@ export default function BookingsScreen() {
                         {booking.totalPrice?.toLocaleString()} VNĐ
                       </Text>
                     </View>
+                    {/* Payment Status Badge */}
+                    <View style={styles.detailRow}>
+                      <Wallet size={13} color={getPaymentStatusColor(booking.paymentStatus || 'pending')} />
+                      <Text style={[styles.detailText, { color: getPaymentStatusColor(booking.paymentStatus || 'pending'), fontWeight: '600' }]}>
+                        {getPaymentStatusLabel(booking.paymentStatus || 'pending')}
+                      </Text>
+                    </View>
                   </View>
                 </GlassCard>
               </PremiumPressable>
@@ -527,7 +654,46 @@ export default function BookingsScreen() {
                         {selectedBooking.totalPrice?.toLocaleString()} VNĐ
                       </Text>
                     </View>
+                    <View style={styles.priceDivider} />
+                    {/* Payment Status + Method */}
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>Phương thức</Text>
+                      <Text style={styles.priceValue}>
+                        {getPaymentMethodLabel(selectedBooking.paymentMethod || 'cash')}
+                      </Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceLabel}>Trạng thái</Text>
+                      <View style={[styles.paymentBadge, { backgroundColor: `${getPaymentStatusColor(selectedBooking.paymentStatus || 'pending')}20` }]}>
+                        <Text style={[styles.paymentBadgeText, { color: getPaymentStatusColor(selectedBooking.paymentStatus || 'pending') }]}>
+                          {getPaymentStatusLabel(selectedBooking.paymentStatus || 'pending')}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
+
+                  {/* ── PAY NOW ── */}
+                  {canPay && (
+                    <TouchableOpacity
+                      onPress={handlePayNow}
+                      disabled={actionLoading}
+                      style={[
+                        styles.actionBtn,
+                        styles.payBtn,
+                        actionLoading && { opacity: 0.45 },
+                      ]}
+                      activeOpacity={0.8}
+                    >
+                      {actionLoading ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <>
+                          <CreditCard size={16} color="#FFF" />
+                          <Text style={styles.actionBtnText}>XÁC NHẬN THANH TOÁN</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
 
                   {/* ── EXTEND ── */}
                   {canExtend && (
@@ -547,37 +713,65 @@ export default function BookingsScreen() {
                         <View style={styles.extendPanel}>
                           <Text style={styles.infoCardTitle}>CHỌN NGÀY TRẢ XE MỚI</Text>
 
-                          <TouchableOpacity
-                            onPress={() => setShowDatePicker(true)}
-                            style={styles.dateSelectorBtn}
-                            activeOpacity={0.8}
-                          >
-                            <CalendarDays size={14} color={LuxuryColors.accent} />
-                            <Text style={styles.dateSelectorText}>
-                              {newReturnDate || 'Chọn ngày'}
-                            </Text>
-                          </TouchableOpacity>
-
-                          {showDatePicker && (
-                            <DateTimePicker
-                              value={newReturnDateObj}
-                              mode="date"
-                              display="default"
-                              minimumDate={
-                                new Date(
-                                  new Date(selectedBooking.endDate).getTime() + 86400000
-                                )
-                              }
-                              onChange={(event, selectedDate) => {
-                                setShowDatePicker(false);
-                                if (selectedDate) {
-                                  setNewReturnDateObj(selectedDate);
-                                  setNewReturnDate(
-                                    selectedDate.toISOString().split('T')[0]
-                                  );
-                                }
+                          {Platform.OS === 'web' ? (
+                            <input
+                              type="date"
+                              value={newReturnDate}
+                              min={selectedBooking ? new Date(new Date(selectedBooking.endDate).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setNewReturnDate(val);
+                                const [y, m, d] = val.split('-').map(Number);
+                                setNewReturnDateObj(new Date(y, m - 1, d));
+                              }}
+                              style={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                color: '#FFF',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: 8,
+                                padding: 12,
+                                outline: 'none',
+                                fontSize: 14,
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                marginTop: 6
                               }}
                             />
+                          ) : (
+                            <>
+                              <TouchableOpacity
+                                onPress={() => setShowDatePicker(true)}
+                                style={styles.dateSelectorBtn}
+                                activeOpacity={0.8}
+                              >
+                                <CalendarDays size={14} color={LuxuryColors.accent} />
+                                <Text style={styles.dateSelectorText}>
+                                  {newReturnDate || 'Chọn ngày'}
+                                </Text>
+                              </TouchableOpacity>
+
+                              {showDatePicker && (
+                                <DateTimePicker
+                                  value={newReturnDateObj}
+                                  mode="date"
+                                  display="default"
+                                  minimumDate={
+                                    new Date(
+                                      new Date(selectedBooking.endDate).getTime() + 86400000
+                                    )
+                                  }
+                                  onChange={(event, selectedDate) => {
+                                    setShowDatePicker(false);
+                                    if (selectedDate) {
+                                      setNewReturnDateObj(selectedDate);
+                                      setNewReturnDate(
+                                        selectedDate.toISOString().split('T')[0]
+                                      );
+                                    }
+                                  }}
+                                />
+                              )}
+                            </>
                           )}
 
                           {extraDays > 0 && (
@@ -664,6 +858,125 @@ export default function BookingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ─── CANCEL CONFIRM MODAL (web) ─── */}
+      <Modal
+        visible={showCancelConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCancelConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[styles.modalSheet, { maxHeight: 320, justifyContent: 'center', padding: 28, gap: 18 }]}>
+            {/* Icon + Title */}
+            <View style={{ alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(244,63,94,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <XCircle size={28} color={LuxuryColors.danger} />
+              </View>
+              <Text style={[styles.modalTitle, { textAlign: 'center' }]}>XÁC NHẬN HỦY ĐẶT XE</Text>
+            </View>
+            {/* Message */}
+            <Text style={{ color: LuxuryColors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 22 }}>
+              Bạn có chắc chắn muốn hủy đặt xe{'\n'}
+              <Text style={{ color: '#FFF', fontWeight: '600' }}>
+                {selectedBooking?.car?.brand} {selectedBooking?.car?.model}
+              </Text>
+              {'\n'}không? Hành động này không thể hoàn tác.
+            </Text>
+            {/* Buttons */}
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+              <TouchableOpacity
+                onPress={() => setShowCancelConfirm(false)}
+                style={[styles.actionBtn, { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)' }]}
+              >
+                <Text style={[styles.actionBtnText, { color: LuxuryColors.textSecondary }]}>QUAY LẠI</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={executeCancelBooking}
+                disabled={actionLoading}
+                style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }, actionLoading && { opacity: 0.45 }]}
+              >
+                {actionLoading
+                  ? <ActivityIndicator size="small" color={LuxuryColors.danger} />
+                  : <Text style={[styles.actionBtnText, { color: LuxuryColors.danger }]}>XÁC NHẬN HỦY</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── DELETE CONFIRM MODAL (web) ─── */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[styles.modalSheet, { maxHeight: 340, justifyContent: 'center', padding: 28, gap: 18 }]}>
+            {/* Icon + Title */}
+            <View style={{ alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(148,163,184,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={28} color="#94A3B8" />
+              </View>
+              <Text style={[styles.modalTitle, { textAlign: 'center' }]}>XÓA HỒ SƠ ĐẶT XE</Text>
+            </View>
+            {/* Message */}
+            <Text style={{ color: LuxuryColors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 22 }}>
+              Bạn chắc chắn muốn xóa hồ sơ đặt xe{'\n'}
+              <Text style={{ color: '#FFF', fontWeight: '600' }}>
+                {selectedBooking?.car?.brand} {selectedBooking?.car?.model}
+              </Text>
+              {'\n'}khỏi hệ thống? Hành động này{' '}
+              <Text style={{ color: LuxuryColors.danger, fontWeight: '700' }}>không thể hoàn tác</Text>.
+            </Text>
+            {/* Buttons */}
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+              <TouchableOpacity
+                onPress={() => setShowDeleteConfirm(false)}
+                style={[styles.actionBtn, { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)' }]}
+              >
+                <Text style={[styles.actionBtnText, { color: LuxuryColors.textSecondary }]}>QUAY LẠI</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={executeDeleteBooking}
+                disabled={actionLoading}
+                style={[styles.actionBtn, styles.deleteBtn, { flex: 1 }, actionLoading && { opacity: 0.45 }]}
+              >
+                {actionLoading
+                  ? <ActivityIndicator size="small" color="#94A3B8" />
+                  : <Text style={[styles.actionBtnText, { color: '#94A3B8' }]}>XÓA HỒ SƠ</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── TOAST NOTIFICATION ─── */}
+      {toast && (
+        <View
+          style={[
+            styles.toastContainer,
+            toast.type === 'success' && { borderColor: LuxuryColors.success, backgroundColor: 'rgba(16,185,129,0.15)' },
+            toast.type === 'error'   && { borderColor: LuxuryColors.danger,  backgroundColor: 'rgba(244,63,94,0.15)'  },
+            toast.type === 'info'    && { borderColor: LuxuryColors.accent,   backgroundColor: 'rgba(234,179,8,0.12)'  },
+          ]}
+        >
+          <Text style={[
+            styles.toastText,
+            toast.type === 'success' && { color: LuxuryColors.success },
+            toast.type === 'error'   && { color: LuxuryColors.danger  },
+            toast.type === 'info'    && { color: LuxuryColors.accent   },
+          ]}>
+            {toast.msg}
+          </Text>
+        </View>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -1024,5 +1337,131 @@ const styles = StyleSheet.create({
     borderRadius: LuxuryRadius.sm,
     borderWidth: 1,
     borderColor: 'rgba(234,179,8,0.15)',
+  },
+  // ─── Payment Styles ───────────────────────────────────────────
+  payBtn: {
+    backgroundColor: LuxuryColors.success,
+  },
+  paymentBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: LuxuryRadius.full,
+  },
+  paymentBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  // ─── QR Payment Modal Styles ──────────────────────────────────
+  qrAmountBanner: {
+    backgroundColor: 'rgba(234,179,8,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(234,179,8,0.25)',
+    borderRadius: LuxuryRadius.md,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  qrAmountLabel: {
+    fontSize: 11,
+    color: LuxuryColors.textSecondary,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  qrAmountValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: LuxuryColors.accent,
+    letterSpacing: 0.5,
+  },
+  qrAmountSub: {
+    fontSize: 12,
+    color: LuxuryColors.textSecondary,
+    marginTop: 4,
+  },
+  qrImageWrapper: {
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: LuxuryRadius.md,
+    padding: 16,
+  },
+  qrImage: {
+    width: 220,
+    height: 220,
+  },
+  qrScanHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  bankInfoCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: LuxuryRadius.md,
+    padding: 16,
+    gap: 0,
+    marginBottom: 14,
+  },
+  bankRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  bankLabel: {
+    fontSize: 12,
+    color: LuxuryColors.textSecondary,
+  },
+  bankValue: {
+    fontSize: 13,
+    color: '#FFF',
+    fontWeight: '600',
+    maxWidth: '60%',
+    textAlign: 'right',
+  },
+  qrNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(251,191,36,0.06)',
+    borderRadius: LuxuryRadius.sm,
+    padding: 12,
+    marginBottom: 4,
+  },
+  qrNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    color: LuxuryColors.textSecondary,
+    lineHeight: 18,
+  },
+  // ── Toast Notification ──
+  toastContainer: {
+    position: 'absolute',
+    bottom: 90,
+    left: 20,
+    right: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  toastText: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });
