@@ -18,7 +18,6 @@ const {
   deleteBooking
 } = require('../controllers/bookingController');
 const {
-  confirmPayment,
   getAllPayments
 } = require('../controllers/paymentController');
 const { adminRouteGuard, protect } = require('../middleware/auth');
@@ -37,20 +36,13 @@ router.get('/pricing-surges', adminRouteGuard, getPricingSurges);
 // BOOKING MANAGEMENT (Admin Only)
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get('/bookings', adminRouteGuard, getAllBookings);
-router.put('/bookings/:id/status', adminRouteGuard, (req, res) => {
-  res.status(403).json({ message: 'Admin is read-only for booking updates' });
-});
-router.patch('/bookings/:id/complete', adminRouteGuard, (req, res) => {
-  res.status(403).json({ message: 'Admin is read-only for booking completion' });
-});
-router.delete('/bookings/:id', adminRouteGuard, (req, res) => {
-  res.status(403).json({ message: 'Admin is read-only for booking deletion' });
-});
+router.put('/bookings/:id/status', adminRouteGuard, updateBookingStatus);
+router.patch('/bookings/:id/complete', adminRouteGuard, completeBooking);
+router.delete('/bookings/:id', adminRouteGuard, deleteBooking);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAYMENT MANAGEMENT (Admin Only)
 // ═══════════════════════════════════════════════════════════════════════════════
-router.post('/payments/confirm', adminRouteGuard, confirmPayment);
 router.get('/payments', adminRouteGuard, getAllPayments);
 
 // ═══════════════════════════════════════════════════════════════════════════════

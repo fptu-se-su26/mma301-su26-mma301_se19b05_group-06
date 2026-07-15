@@ -7,7 +7,8 @@ const {
   completeBooking,
   cancelBooking,
   deleteBooking,
-  checkAvailability
+  checkAvailability,
+  extendBooking
 } = require('../controllers/bookingController');
 const { protect, adminReadOnlyGuard } = require('../middleware/auth');
 
@@ -20,6 +21,9 @@ router.get('/availability', checkAvailability);
 router.post('/', protect, adminReadOnlyGuard, createBooking);
 router.get('/my-bookings', protect, getMyBookings);
 router.get('/:id', protect, getBookingById);
-router.patch('/:id/cancel', protect, adminReadOnlyGuard, cancelBooking);
+router.post('/:id/extend', protect, extendBooking);
+router.patch('/:id/cancel', protect, cancelBooking);
+router.delete('/:id', protect, deleteBooking);
 
 module.exports = router;
+
