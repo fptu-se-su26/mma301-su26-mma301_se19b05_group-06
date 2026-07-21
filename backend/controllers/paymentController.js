@@ -44,6 +44,17 @@ exports.checkAndUpdatePaymentStatus = async (booking) => {
         booking.status = 'Approved';
         booking.transactionId = paymentLinkInfo.transactions?.[0]?.reference || ('MB_' + Date.now());
         await booking.save();
+
+        try {
+          const { createSystemNotification } = require('./notificationController');
+          await createSystemNotification(
+            booking.userId,
+            'Payment Successful',
+            `Your booking request has been approved and payment confirmed successfully.`
+          );
+        } catch (notifErr) {
+          console.log('Error creating notification for successful payment:', notifErr.message);
+        }
         
         try {
           await sendConfirmationEmail(booking);

@@ -23,11 +23,12 @@ import {
   LuxuryRadius,
 } from '@/constants/luxuryTheme';
 import { getStoredUser, StoredUser } from '@/services/storage';
-import { getCarsAPI } from '@/services/api';
+import { getCarsAPI, getNotificationsAPI } from '@/services/api';
 import CarCard from '@/components/CarCard';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 import FloatingAIButton from '@/components/FloatingAIButton';
+import NotificationModal from '@/components/NotificationModal';
 
 const CATEGORIES = ['All', 'Hypercar', 'Supercar', 'SUV', 'Luxury Sedan', 'Electric'];
 
@@ -106,6 +107,8 @@ export default function ShowroomScreen() {
   
   // Modal visibility
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
+  const [hasUnreadNotification, setHasUnreadNotification] = useState(false);
   
   // Temporary states for interaction within the filter modal
   const [tempLocation, setTempLocation] = useState('All');
@@ -114,6 +117,17 @@ export default function ShowroomScreen() {
   const [tempFuelType, setTempFuelType] = useState('All');
   const [tempSeats, setTempSeats] = useState('All');
   const [tempSortBy, setTempSortBy] = useState('rating');
+
+  const checkUnreadNotifications = async () => {
+    try {
+      const { data } = await getNotificationsAPI();
+      if (Array.isArray(data)) {
+        setHasUnreadNotification(data.some((n: any) => !n.isRead));
+      }
+    } catch (error) {
+      console.warn('Lỗi kiểm tra thông báo chưa đọc:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -138,6 +152,7 @@ export default function ShowroomScreen() {
 
     fetchUser();
     fetchCars();
+    checkUnreadNotifications();
   }, []);
 
   const openFilterModal = () => {
@@ -312,9 +327,12 @@ export default function ShowroomScreen() {
           <Text style={styles.welcomeText}>WELCOME CLIENT</Text>
           <Text style={styles.userName}>{user?.name || user?.email?.split('@')[0] || 'Exclusive Guest'}</Text>
         </View>
-        <PremiumPressable style={styles.notificationBtn}>
+        <PremiumPressable
+          style={styles.notificationBtn}
+          onPress={() => setIsNotificationModalVisible(true)}
+        >
           <Bell size={20} color="#FFF" />
-          <View style={styles.badgeDot} />
+          {hasUnreadNotification && <View style={styles.badgeDot} />}
         </PremiumPressable>
       </View>
 
@@ -511,6 +529,13 @@ export default function ShowroomScreen() {
 
       {/* FLOATING AI ASSISTANT BUTTON */}
       <FloatingAIButton />
+
+      {/* NOTIFICATION MODAL */}
+      <NotificationModal
+        visible={isNotificationModalVisible}
+        onClose={() => setIsNotificationModalVisible(false)}
+        onRefreshBadge={checkUnreadNotifications}
+      />
 
       {/* ADVANCED FILTERS MODAL */}
       <Modal

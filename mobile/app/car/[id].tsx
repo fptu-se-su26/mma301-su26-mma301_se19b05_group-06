@@ -14,6 +14,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import {
@@ -32,6 +33,7 @@ import {
   Tag,
   Award,
   CreditCard,
+  Trash2,
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as WebBrowser from 'expo-web-browser';
@@ -43,7 +45,14 @@ import {
   LuxuryTypography,
   LuxuryRadius,
 } from '@/constants/luxuryTheme';
-import { getCarByIdAPI, createBookingAPI, applyVoucherAPI, createPaymentLinkAPI } from '@/services/api';
+import {
+  getCarByIdAPI,
+  createBookingAPI,
+  applyVoucherAPI,
+  createPaymentLinkAPI,
+  getReviewsByCarAPI,
+  deleteReviewAPI
+} from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 
@@ -168,6 +177,49 @@ export default function CarDetailScreen() {
   // Booking submission states
   const [bookingLoading, setBookingLoading] = useState(false);
 
+  // Reviews states
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const fetchReviews = async () => {
+    if (!id) return;
+    setReviewsLoading(true);
+    try {
+      const { data } = await getReviewsByCarAPI(id as string);
+      setReviews(data || []);
+    } catch (error) {
+      console.warn('API error fetching reviews, using mock reviews.');
+      setReviews(MOCK_REVIEWS);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    Alert.alert(
+      'DELETE REVIEW',
+      'Are you sure you want to delete this review?',
+      [
+        { text: 'BACK', style: 'cancel' },
+        {
+          text: 'DELETE',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteReviewAPI(reviewId);
+              Alert.alert('Success', 'Review deleted successfully.');
+              fetchReviews();
+            } catch (err: any) {
+              console.error(err);
+              Alert.alert('Error', err?.response?.data?.message || 'Unable to delete review at this moment.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   useEffect(() => {
     const fetchCarDetails = async () => {
       setLoading(true);
@@ -188,7 +240,21 @@ export default function CarDetailScreen() {
         setLoading(false);
       }
     };
+
+    const loadCurrentUser = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) {
+          setCurrentUser(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.warn('Error loading user:', error);
+      }
+    };
+
     fetchCarDetails();
+    fetchReviews();
+    loadCurrentUser();
   }, [id]);
 
   const openBookingModal = () => {
@@ -216,7 +282,7 @@ export default function CarDetailScreen() {
         const discount = response.data.discountPercentage || response.data.value || 15;
         setPromoDiscount(discount);
         setPromoSuccess(true);
-        setPromoMessage(`Áp dụng thành công! Giảm giá ${discount}%`);
+        setPromoMessage(`Applied successfully! ${discount}% discount`);
       }
     } catch (error) {
       console.warn('API voucher offline, applying high-fidelity mock voucher codes');
@@ -224,19 +290,19 @@ export default function CarDetailScreen() {
       if (codeUpper === 'ELITE15' || codeUpper === 'SUMMER2026') {
         setPromoDiscount(15);
         setPromoSuccess(true);
-        setPromoMessage('Áp dụng thành công! Ưu đãi đặc quyền 15%');
+        setPromoMessage('Applied successfully! 15% exclusive discount');
       } else if (codeUpper === 'WELCOME' || codeUpper === 'FPTU') {
         setPromoDiscount(10);
         setPromoSuccess(true);
-        setPromoMessage('Áp dụng thành công! Khách hàng mới giảm 10%');
+        setPromoMessage('Applied successfully! 10% new customer discount');
       } else if (codeUpper === 'SVJ30') {
         setPromoDiscount(30);
         setPromoSuccess(true);
-        setPromoMessage('Áp dụng thành công! Khách hàng VIP giảm 30%');
+        setPromoMessage('Applied successfully! 30% VIP customer discount');
       } else {
         setPromoDiscount(0);
         setPromoSuccess(false);
-        setPromoMessage('Mã ưu đãi không hợp lệ hoặc đã hết hạn');
+        setPromoMessage('Invalid or expired voucher code');
       }
     } finally {
       setPromoLoading(false);
@@ -430,25 +496,44 @@ export default function CarDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionHeading}>CUSTOMER FEEDBACK</Text>
             <View style={styles.reviewsList}>
-              {MOCK_REVIEWS.map((review) => (
-                <GlassCard key={review._id} style={styles.reviewItem}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewerName}>{review.name}</Text>
-                    <View style={styles.reviewStars}>
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={10}
-                          color={i < review.rating ? LuxuryColors.accent : LuxuryColors.textMuted}
-                          fill={i < review.rating ? LuxuryColors.accent : 'transparent'}
-                        />
-                      ))}
+              {reviewsLoading ? (
+                <ActivityIndicator size="small" color={LuxuryColors.accent} />
+              ) : reviews.length === 0 ? (
+                <Text style={{ color: LuxuryColors.textMuted, fontSize: 13, fontStyle: 'italic', paddingVertical: 10 }}>
+                  No reviews for this vehicle yet.
+                </Text>
+              ) : (
+                reviews.map((review) => (
+                  <GlassCard key={review._id} style={styles.reviewItem}>
+                    <View style={styles.reviewHeader}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.reviewerName}>
+                          {review.userId?.name || review.name || 'Exclusive Guest'}
+                        </Text>
+                        {currentUser && (review.userId?._id === currentUser._id || review.userId === currentUser._id || currentUser.role === 'admin') && (
+                          <TouchableOpacity onPress={() => handleDeleteReview(review._id)}>
+                            <Trash2 size={13} color={LuxuryColors.danger} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <View style={styles.reviewStars}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={10}
+                            color={i < review.rating ? LuxuryColors.accent : LuxuryColors.textMuted}
+                            fill={i < review.rating ? LuxuryColors.accent : 'transparent'}
+                          />
+                        ))}
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.reviewComment}>{review.comment}</Text>
-                  <Text style={styles.reviewDate}>{review.date}</Text>
-                </GlassCard>
-              ))}
+                    <Text style={styles.reviewComment}>{review.comment}</Text>
+                    <Text style={styles.reviewDate}>
+                      {review.createdAt ? new Date(review.createdAt).toLocaleDateString('en-US') : review.date || ''}
+                    </Text>
+                  </GlassCard>
+                ))
+              )}
             </View>
           </View>
         </View>

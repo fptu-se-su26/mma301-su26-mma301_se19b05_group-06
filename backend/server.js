@@ -30,6 +30,10 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const carRoutes = require('./routes/carRoutes');
 
 const sellerRoutes = require('./routes/sellerRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const voucherRoutes = require('./routes/voucherRoutes');
 
 // --- API ENDPOINTS ---
 app.use('/api/seller', sellerRoutes);
@@ -38,6 +42,10 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', analyticsRoutes);
 app.use('/api/cars', carRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin/notifications', notificationRoutes);
+app.use('/api/admin/vouchers', voucherRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

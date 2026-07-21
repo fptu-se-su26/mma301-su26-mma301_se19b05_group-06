@@ -68,6 +68,18 @@ exports.createBooking = async (req, res) => {
     });
     
     await booking.save();
+
+    try {
+      const { createSystemNotification } = require('./notificationController');
+      await createSystemNotification(
+        req.user.id,
+        'Booking Successful',
+        `Your booking request for ${carDoc.brand} ${carDoc.model} has been submitted. Please complete payment to confirm.`
+      );
+    } catch (notifErr) {
+      console.log('Error creating notification for booking:', notifErr.message);
+    }
+
     res.status(201).json(booking);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -137,6 +149,17 @@ exports.updateBookingStatus = async (req, res) => {
     
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
+    try {
+      const { createSystemNotification } = require('./notificationController');
+      await createSystemNotification(
+        booking.userId._id,
+        'Booking Updated',
+        `The status of your booking for ${booking.carId?.brand || 'Luxury'} ${booking.carId?.model || 'Vehicle'} has been updated to: ${status}.`
+      );
+    } catch (notifErr) {
+      console.log('Error creating notification for booking update:', notifErr.message);
+    }
+    
     res.json(booking);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -166,6 +189,17 @@ exports.completeBooking = async (req, res) => {
     booking.updatedAt = new Date();
     
     await booking.save();
+
+    try {
+      const { createSystemNotification } = require('./notificationController');
+      await createSystemNotification(
+        booking.userId,
+        'Trip Completed',
+        `Your trip has been completed. Please submit a review to share your experience!`
+      );
+    } catch (notifErr) {
+      console.log('Error creating notification for completed trip:', notifErr.message);
+    }
     
     res.json({
       message: 'Booking completed',
@@ -202,6 +236,17 @@ exports.cancelBooking = async (req, res) => {
     booking.updatedAt = new Date();
     
     await booking.save();
+
+    try {
+      const { createSystemNotification } = require('./notificationController');
+      await createSystemNotification(
+        booking.userId,
+        'Booking Cancelled',
+        `Your booking request has been successfully cancelled.`
+      );
+    } catch (notifErr) {
+      console.log('Error creating notification for booking cancellation:', notifErr.message);
+    }
     
     res.json({ message: 'Booking cancelled successfully', booking });
   } catch (error) {

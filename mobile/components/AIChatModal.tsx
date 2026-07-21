@@ -52,7 +52,7 @@ const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
     {
       id: '1',
       role: 'assistant',
-      content: 'Xin chào! Tôi là Trợ lý Elite của bạn. Tôi có thể giúp bạn tìm xe hoàn hảo, tư vấn giá cả hoặc giải đáp bất kỳ thắc mắc nào về dịch vụ của chúng tôi. Bạn cần tôi hỗ trợ gì hôm nay? 🚘',
+      content: 'Hello! I am your Elite Assistant. I can help you find the perfect car, advise on pricing, or answer any questions about our service. How can I assist you today? 🚘',
       timestamp: new Date(),
     }
   ]);
@@ -84,7 +84,7 @@ const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.replyText || 'Xin lỗi, tôi không thể xử lý yêu cầu lúc này.',
+        content: data.replyText || 'Sorry, I cannot process your request at the moment.',
         suggestedCars: data.suggestedCars || [],
         timestamp: new Date(),
       }]);
@@ -93,7 +93,7 @@ const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Xin lỗi, đang có sự cố kỹ thuật. Vui lòng thử lại sau.',
+        content: 'Sorry, there was a technical issue. Please try again later.',
         timestamp: new Date(),
       }]);
     } finally {
@@ -178,7 +178,7 @@ const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
                         <Image source={{ uri: car.image }} style={styles.carImage} resizeMode="cover" />
                         <View style={styles.carInfo}>
                           <Text style={styles.carName} numberOfLines={1}>{car.carName}</Text>
-                          <Text style={styles.carPrice}>{Number(car.price).toLocaleString()} VNĐ/ngày</Text>
+                          <Text style={styles.carPrice}>{Number(car.price).toLocaleString()} VNĐ/day</Text>
                           <Text style={styles.carReason} numberOfLines={2}>{car.reason}</Text>
                           {car.id && (
                             <Pressable
@@ -191,7 +191,7 @@ const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
                               style={styles.detailBtn}
                             >
                               <ExternalLink size={12} color={LuxuryColors.background} />
-                              <Text style={styles.detailBtnText}>Xem chi tiết</Text>
+                              <Text style={styles.detailBtnText}>View details</Text>
                             </Pressable>
                           )}
                         </View>

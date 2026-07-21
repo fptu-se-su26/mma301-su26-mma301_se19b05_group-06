@@ -13,6 +13,7 @@ import {
   Platform,
   TouchableOpacity,
   Pressable,
+  TextInput,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -35,6 +36,7 @@ import {
   Banknote,
   Smartphone,
   Check,
+  Star,
 } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -50,6 +52,7 @@ import {
   cancelBookingAPI,
   deleteBookingAPI,
   createPaymentLinkAPI,
+  createReviewAPI,
 } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
@@ -177,6 +180,43 @@ export default function BookingsScreen() {
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  // Review states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  const handleOpenReview = () => {
+    setIsDetailModalVisible(false);
+    setReviewRating(5);
+    setReviewComment('');
+    setShowReviewModal(true);
+  };
+
+  const executeSubmitReview = async () => {
+    if (!selectedBooking) return;
+    if (!reviewComment.trim()) {
+      showToast('Please enter your review content', 'error');
+      return;
+    }
+    setReviewLoading(true);
+    try {
+      await createReviewAPI({
+        bookingId: selectedBooking._id,
+        rating: reviewRating,
+        comment: reviewComment.trim()
+      });
+      showToast('Trip reviewed successfully!', 'success');
+      setShowReviewModal(false);
+      fetchBookings();
+    } catch (err: any) {
+      console.error(err);
+      showToast(err?.response?.data?.message || 'Unable to submit review', 'error');
+    } finally {
+      setReviewLoading(false);
+    }
   };
 
   const fetchBookings = useCallback(async () => {
@@ -834,6 +874,20 @@ export default function BookingsScreen() {
                     </TouchableOpacity>
                   )}
 
+                  {/* ── REVIEW ── */}
+                  {selectedBooking?.status === 'Completed' && (
+                    <TouchableOpacity
+                      onPress={handleOpenReview}
+                      style={[styles.actionBtn, { backgroundColor: LuxuryColors.accent, marginBottom: 10 }]}
+                      activeOpacity={0.8}
+                    >
+                      <Star size={16} color={LuxuryColors.background} fill={LuxuryColors.background} />
+                      <Text style={[styles.actionBtnText, { color: LuxuryColors.background }]}>
+                        RATE YOUR TRIP
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
                   {/* ── DELETE ── */}
                   {canDelete && (
                     <TouchableOpacity
@@ -952,6 +1006,90 @@ export default function BookingsScreen() {
                 }
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── REVIEW MODAL ─── */}
+      <Modal
+        visible={showReviewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[styles.modalSheet, { maxHeight: 420, padding: 24, gap: 16 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Star size={16} color={LuxuryColors.accent} fill={LuxuryColors.accent} />
+                <Text style={styles.modalTitle}>RATE YOUR TRIP</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowReviewModal(false)} style={styles.closeBtn} activeOpacity={0.7}>
+                <X size={18} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: LuxuryColors.textSecondary, fontSize: 13, textAlign: 'center' }}>
+              Please share your feedback on the vehicle{' '}
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                {selectedBooking?.car?.brand} {selectedBooking?.car?.model}
+              </Text>
+            </Text>
+
+            {/* Stars selection */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginVertical: 8 }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setReviewRating(star)}>
+                  <Star
+                    size={32}
+                    color={star <= reviewRating ? LuxuryColors.accent : 'rgba(255,255,255,0.2)'}
+                    fill={star <= reviewRating ? LuxuryColors.accent : 'transparent'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Comment input */}
+            <TextInput
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                color: '#FFF',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 14,
+                height: 100,
+                textAlignVertical: 'top',
+              }}
+              placeholder="Enter your feedback about the trip..."
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              multiline
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              maxLength={200}
+            />
+
+            {/* Submit button */}
+            <TouchableOpacity
+              onPress={executeSubmitReview}
+              disabled={reviewLoading}
+              style={[
+                styles.actionBtn,
+                { backgroundColor: LuxuryColors.accent, marginTop: 8 },
+                reviewLoading && { opacity: 0.5 },
+              ]}
+              activeOpacity={0.8}
+            >
+              {reviewLoading ? (
+                <ActivityIndicator size="small" color={LuxuryColors.background} />
+              ) : (
+                <Text style={[styles.actionBtnText, { color: LuxuryColors.background }]}>
+                  SUBMIT REVIEW
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
