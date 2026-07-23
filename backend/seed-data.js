@@ -1,5 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Thay bằng URI của bạn (nếu có thêm tên database ở cuối thì càng tốt, vd: ...mongodb.net/car-rental)
 const uri = process.env.MONGODB_URI || 'mongodb+srv://tranchan:1t2r3a4a5n6f@cluster0.8dmrtdn.mongodb.net/car-rental';
@@ -25,6 +26,7 @@ const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   role: { type: String, default: 'user' },
+  password: { type: String, required: true },
 });
 const User = mongoose.model('User', userSchema);
 
@@ -116,11 +118,7 @@ const mockCars = [
   }
 ];
 
-const mockUsers = [
-  { name: 'Admin Tèo', email: 'admin@carrental.com', role: 'admin' },
-  { name: 'User Tí', email: 'user@carrental.com', role: 'user' },
-  { name: 'Seller Hoa', email: 'seller@test.com', role: 'seller' },
-];
+
 
 async function seedData() {
   try {
@@ -133,6 +131,15 @@ async function seedData() {
     await User.deleteMany({});
 
     console.log("Đang thêm dữ liệu mới...");
+    
+    // Hash default password for all seeded users
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    const mockUsers = [
+      { name: 'Admin Tèo', email: 'admin@carrental.com', role: 'admin', password: hashedPassword },
+      { name: 'User Tí', email: 'user@carrental.com', role: 'user', password: hashedPassword },
+      { name: 'Seller Hoa', email: 'seller@test.com', role: 'seller', password: hashedPassword },
+    ];
+    
     const createdUsers = await User.insertMany(mockUsers);
     
     // Tìm ID của seller
