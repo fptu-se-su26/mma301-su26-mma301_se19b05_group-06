@@ -11,6 +11,7 @@ const carSchema = new mongoose.Schema({
   seats: Number,
   transmission: String,
   fuelType: String,
+  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 });
 
 module.exports = mongoose.model('Car', carSchema);

@@ -9,8 +9,12 @@ const router = express.Router();
 // ─── Create Car ─────────────────────────────────────────────────────────────
 router.post('/', protect, sellerOrAdminRouteGuard, async (req, res) => {
   try {
+    if (req.user.role === 'admin') {
+      return res.status(403).json({ message: 'Admin không được phép thêm xe mới' });
+    }
     const Car = require('../models/Car') || require('mongoose').model('Car');
-    const car = new Car(req.body);
+    const carData = { ...req.body, sellerId: req.user.id };
+    const car = new Car(carData);
     await car.save();
     res.status(201).json(car);
   } catch (error) {
@@ -45,8 +49,15 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', protect, sellerOrAdminRouteGuard, async (req, res) => {
   try {
     const Car = require('../models/Car') || require('mongoose').model('Car');
-    const car = await Car.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });
+    
+    if (req.user.role === 'seller' && car.sellerId && car.sellerId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Bạn chỉ có quyền sửa xe của chính mình' });
+    }
+    
+    Object.assign(car, req.body);
+    await car.save();
     res.json(car);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -57,6 +68,13 @@ router.put('/:id', protect, sellerOrAdminRouteGuard, async (req, res) => {
 router.delete('/:id', protect, sellerOrAdminRouteGuard, async (req, res) => {
   try {
     const Car = require('../models/Car') || require('mongoose').model('Car');
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    
+    if (req.user.role === 'seller' && car.sellerId && car.sellerId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Bạn chỉ có quyền xóa xe của chính mình' });
+    }
+    
     await Car.findByIdAndDelete(req.params.id);
     res.json({ message: 'Car deleted' });
   } catch (error) {

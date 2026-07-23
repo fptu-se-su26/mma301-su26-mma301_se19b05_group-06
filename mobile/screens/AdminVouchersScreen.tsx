@@ -41,6 +41,7 @@ import {
   LuxuryTypography,
   LuxuryRadius,
 } from '@/constants/luxuryTheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getAdminVouchersAPI,
   createAdminVoucherAPI,
@@ -594,6 +595,18 @@ const AdminVouchersScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setRole(user.role);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const loadVouchers = async () => {
     try {
@@ -691,9 +704,11 @@ const AdminVouchersScreen = () => {
             <Text style={styles.title}>Vouchers</Text>
             <Text style={styles.subtitle}>Manage promotional codes</Text>
           </View>
-          <PremiumPressable onPress={() => setModalVisible(true)} style={styles.addBtn}>
-            <Plus size={20} color={LuxuryColors.background} />
-          </PremiumPressable>
+           {role === 'seller' && (
+            <PremiumPressable onPress={() => setModalVisible(true)} style={styles.addBtn}>
+              <Plus size={20} color={LuxuryColors.background} />
+            </PremiumPressable>
+          )}
         </Animated.View>
 
         {/* Summary stats */}

@@ -216,7 +216,7 @@ export default function CarDetailScreen() {
     setPromoMessage('');
     setPromoSuccess(null);
     try {
-      const response = await applyVoucherAPI(promoCode.trim(), subtotal);
+      const response = await applyVoucherAPI(promoCode.trim(), subtotal, car._id);
       if (response?.data) {
         const discount = response.data.discountPercentage || response.data.value || 15;
         if (discount <= 100) {

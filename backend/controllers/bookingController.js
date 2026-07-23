@@ -35,22 +35,27 @@ exports.createBooking = async (req, res) => {
     let totalPrice = carDoc.pricePerDay * numberOfDays;
     
     if (promoCode) {
-      const codeUpper = promoCode.trim().toUpperCase();
-      let discountAmount = 0;
-      if (codeUpper === 'ELITE15' || codeUpper === 'SUMMER2026' || codeUpper === 'SUMMER15') {
-        discountAmount = totalPrice * 0.15;
-      } else if (codeUpper === 'WELCOME' || codeUpper === 'FPTU' || codeUpper === 'NEWUSER10') {
-        discountAmount = totalPrice * 0.10;
-      } else if (codeUpper === 'SVJ30') {
-        discountAmount = totalPrice * 0.30;
-      } else if (codeUpper === 'DAYGOOD') {
-        discountAmount = totalPrice * 0.20;
-      } else if (codeUpper === 'NEWUSER20') {
-        discountAmount = totalPrice * 0.20;
-      } else if (codeUpper === 'VIP500K') {
-        discountAmount = 500000;
+      const Voucher = require('../models/Voucher');
+      const voucher = await Voucher.findOne({ code: promoCode.trim().toUpperCase(), isActive: true });
+      if (voucher) {
+        const isNotExpired = !voucher.expiryDate || new Date(voucher.expiryDate) >= new Date();
+        const isNotFull = !voucher.maxUsage || voucher.usedCount < voucher.maxUsage;
+        const isMinVal = !voucher.minBookingValue || totalPrice >= voucher.minBookingValue;
+        const isCorrectSeller = !carDoc.sellerId || (voucher.sellerId && voucher.sellerId.toString() === carDoc.sellerId.toString());
+        
+        if (isNotExpired && isNotFull && isMinVal && isCorrectSeller) {
+          let discountAmount = 0;
+          if (voucher.discountType === 'percentage') {
+            discountAmount = totalPrice * (voucher.discountValue / 100);
+          } else if (voucher.discountType === 'fixed') {
+            discountAmount = voucher.discountValue;
+          }
+          totalPrice = Math.max(0, totalPrice - discountAmount);
+          
+          voucher.usedCount += 1;
+          await voucher.save();
+        }
       }
-      totalPrice = Math.max(0, totalPrice - discountAmount);
     }
     
     // Fetch user info for fallbacks if not provided

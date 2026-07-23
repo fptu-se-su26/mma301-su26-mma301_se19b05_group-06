@@ -16,47 +16,96 @@ const carSchema = new mongoose.Schema({
   seats: Number,
   transmission: String,
   fuelType: String,
+  sellerId: mongoose.Schema.Types.ObjectId,
 });
 const Car = mongoose.model('Car', carSchema);
 
 // 2. Định nghĩa Schema cho User (Người dùng)
 const userSchema = new mongoose.Schema({
   name: String,
-  email: String,
+  email: { type: String, unique: true },
   role: { type: String, default: 'user' },
 });
 const User = mongoose.model('User', userSchema);
 
-// 3. Dữ liệu mẫu (Mock data)
+// 3. Dữ liệu xe mẫu
 const mockCars = [
   {
-    brand: 'Porsche',
-    model: '911 Carrera',
-    imageUrl: 'https://images.unsplash.com/photo-1503376712351-1c4b22b64b15?q=80&w=1000&auto=format&fit=crop',
-    pricePerDay: 5000000,
+    brand: 'Mercedes-Benz',
+    model: 'G-Class G63',
+    imageUrl: 'https://images.unsplash.com/photo-1520050206274-a1ae446cb3cc?auto=format&fit=crop&q=80&w=800',
+    pricePerDay: 8000000,
     rating: 4.9,
     location: 'Hồ Chí Minh',
-    type: 'LUXURY',
+    type: 'SUV',
+    seats: 5,
+    transmission: 'Automatic',
+    fuelType: 'Gasoline',
+  },
+  {
+    brand: 'Porsche',
+    model: '911 Carrera S',
+    imageUrl: 'https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?auto=format&fit=crop&q=80&w=800',
+    pricePerDay: 12000000,
+    rating: 4.9,
+    location: 'Hồ Chí Minh',
+    type: 'Coupe',
     seats: 4,
     transmission: 'Automatic',
     fuelType: 'Gasoline',
   },
   {
-    brand: 'Tesla',
-    model: 'Model S',
-    imageUrl: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?q=80&w=1000&auto=format&fit=crop',
-    pricePerDay: 3500000,
-    rating: 4.8,
+    brand: 'Rolls-Royce',
+    model: 'Ghost V-Specification',
+    imageUrl: 'https://images.unsplash.com/photo-1632245889027-e406faaa19cc?auto=format&fit=crop&q=80&w=800',
+    pricePerDay: 25000000,
+    rating: 5.0,
     location: 'Hà Nội',
-    type: 'ELECTRIC',
+    type: 'Sedan',
     seats: 5,
     transmission: 'Automatic',
-    fuelType: 'EV',
+    fuelType: 'Gasoline',
   },
   {
-    brand: 'Mercedes-Benz',
-    model: 'G-Class',
-    imageUrl: 'https://images.unsplash.com/photo-1520031441872-265e4ff70366?q=80&w=1000&auto=format&fit=crop',
+    brand: 'Audi',
+    model: 'R8 V10 Performance',
+    imageUrl: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=800',
+    pricePerDay: 15000000,
+    rating: 4.8,
+    location: 'Hà Nội',
+    type: 'Coupe',
+    seats: 2,
+    transmission: 'Automatic',
+    fuelType: 'Gasoline',
+  },
+  {
+    brand: 'Bentley',
+    model: 'Continental GT',
+    imageUrl: 'https://images.unsplash.com/photo-1621135802920-133df287f89c?auto=format&fit=crop&q=80&w=800',
+    pricePerDay: 18000000,
+    rating: 4.9,
+    location: 'Đà Nẵng',
+    type: 'Coupe',
+    seats: 4,
+    transmission: 'Automatic',
+    fuelType: 'Gasoline',
+  },
+  {
+    brand: 'Lamborghini',
+    model: 'Urus Pearl Capsule',
+    imageUrl: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&q=80&w=800',
+    pricePerDay: 22000000,
+    rating: 4.9,
+    location: 'Đà Nẵng',
+    type: 'SUV',
+    seats: 5,
+    transmission: 'Automatic',
+    fuelType: 'Gasoline',
+  },
+  {
+    brand: 'Range Rover',
+    model: 'SV Autobiography',
+    imageUrl: 'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?auto=format&fit=crop&q=80&w=800',
     pricePerDay: 6000000,
     rating: 5.0,
     location: 'Đà Nẵng',
@@ -70,6 +119,7 @@ const mockCars = [
 const mockUsers = [
   { name: 'Admin Tèo', email: 'admin@carrental.com', role: 'admin' },
   { name: 'User Tí', email: 'user@carrental.com', role: 'user' },
+  { name: 'Seller Hoa', email: 'seller@test.com', role: 'seller' },
 ];
 
 async function seedData() {
@@ -83,10 +133,20 @@ async function seedData() {
     await User.deleteMany({});
 
     console.log("Đang thêm dữ liệu mới...");
-    await Car.insertMany(mockCars);
-    await User.insertMany(mockUsers);
+    const createdUsers = await User.insertMany(mockUsers);
+    
+    // Tìm ID của seller
+    const seller = createdUsers.find(u => u.role === 'seller');
+    
+    // Gán sellerId cho tất cả các xe mẫu
+    const carsWithSeller = mockCars.map(car => ({
+      ...car,
+      sellerId: seller ? seller._id : null
+    }));
 
-    console.log("✅ Thêm dữ liệu thành công! Bạn của bạn có thể test ứng dụng được rồi!");
+    await Car.insertMany(carsWithSeller);
+
+    console.log("✅ Thêm dữ liệu công! Bạn của bạn có thể test ứng dụng được rồi!");
   } catch (err) {
     console.error("❌ Lỗi khi thêm dữ liệu:", err);
   } finally {

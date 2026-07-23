@@ -103,7 +103,7 @@ const AdminCarsScreen = () => {
             <Text style={styles.title}>Fleet Inventory</Text>
             <Text style={styles.subtitle}>Curate and manage your ultimate collection</Text>
           </View>
-          {(role === 'admin' || role === 'seller') && (
+          {role === 'seller' && (
             <TouchableOpacity 
               onPress={() => router.push('/(admin)/car-form')}
               style={{
