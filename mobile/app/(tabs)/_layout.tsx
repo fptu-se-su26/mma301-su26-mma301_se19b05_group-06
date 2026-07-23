@@ -1,9 +1,23 @@
 import { Tabs } from 'expo-router';
-import { ShieldCheck, Compass, Calendar, User } from 'lucide-react-native';
+import { ShieldCheck, Compass, Calendar, User, LayoutGrid } from 'lucide-react-native';
 import { LuxuryColors, LuxuryTypography } from '@/constants/luxuryTheme';
 import { Platform } from 'react-native';
+import { useState, useEffect } from 'react';
+import { getStoredUser } from '@/services/storage';
 
 export default function TabsLayout() {
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      const user = await getStoredUser();
+      if (user) {
+        setRole(user.role);
+      }
+    };
+    checkUserRole();
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
@@ -52,6 +66,14 @@ export default function TabsLayout() {
         options={{
           title: 'PROFILE',
           tabBarIcon: ({ color, size }) => <User size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'DASHBOARD',
+          tabBarIcon: ({ color, size }) => <LayoutGrid size={20} color={color} />,
+          href: (role === 'admin' || role === 'seller') ? undefined : null,
         }}
       />
     </Tabs>

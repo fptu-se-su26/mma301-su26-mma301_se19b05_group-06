@@ -7,7 +7,7 @@ export default function AdminLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check admin access on layout mount
+    // Check admin or seller access on layout mount
     const checkAdminAccess = async () => {
       try {
         const userJson = await AsyncStorage.getItem('user');
@@ -17,7 +17,7 @@ export default function AdminLayout() {
         }
 
         const user = JSON.parse(userJson);
-        if (user.role !== 'admin') {
+        if (user.role !== 'admin' && user.role !== 'seller') {
           router.replace('/');
         }
       } catch (error) {
@@ -44,9 +44,11 @@ export default function AdminLayout() {
       <Stack.Screen name="payments" />
       <Stack.Screen name="analytics" />
       <Stack.Screen name="cars" />
+      <Stack.Screen name="car-form" />
       <Stack.Screen name="availability" />
       <Stack.Screen name="calendar" />
       <Stack.Screen name="seller-requests" />
+      <Stack.Screen name="vouchers" />
     </Stack>
   );
 }

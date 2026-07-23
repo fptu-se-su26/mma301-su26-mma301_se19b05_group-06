@@ -14,6 +14,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
@@ -588,6 +589,7 @@ const CreateVoucherModal = ({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AdminVouchersScreen = () => {
+  const router = useRouter();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -672,8 +674,20 @@ const AdminVouchersScreen = () => {
         }
       >
         {/* Header */}
-        <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
-          <View>
+        <Animated.View entering={FadeInDown.duration(500).springify()} style={[styles.header, { gap: 12 }]}>
+          <TouchableOpacity 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/dashboard');
+              }
+            }} 
+            style={styles.backButton}
+          >
+            <ChevronLeft size={24} color={LuxuryColors.accent} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Vouchers</Text>
             <Text style={styles.subtitle}>Manage promotional codes</Text>
           </View>
@@ -761,6 +775,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: LuxuryRadius.md,
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: { ...LuxuryTypography.titleL, color: '#FFF' },
   subtitle: { ...LuxuryTypography.caption, color: LuxuryColors.textMuted, marginTop: 4 },
@@ -969,6 +991,9 @@ const styles = StyleSheet.create({
     borderRadius: LuxuryRadius.md,
     gap: 10,
     marginTop: 4,
+    maxWidth: 340,
+    width: '100%',
+    alignSelf: 'center',
   },
   inlineCalHeader: {
     flexDirection: 'row',

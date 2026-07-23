@@ -7,7 +7,8 @@ import {
   View,
   StatusBar,
   TouchableOpacity,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -21,7 +22,9 @@ import {
   BarChart3,
   CreditCard,
   BadgeCheck,
-  HandCoins
+  HandCoins,
+  Home,
+  Ticket
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,10 +42,16 @@ const AdminDashboardScreen = () => {
   const router = useRouter();
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string>('seller');
 
   useEffect(() => {
     const loadStats = async () => {
       try {
+        const userJson = await AsyncStorage.getItem('user');
+        if (userJson) {
+          const user = JSON.parse(userJson);
+          setRole(user.role || 'seller');
+        }
         const { data } = await getStatsAPI();
         setStats(data);
       } catch (error) {
@@ -54,19 +63,28 @@ const AdminDashboardScreen = () => {
     loadStats();
   }, []);
 
+  const performLogout = async () => {
+    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('user');
+    router.replace('/(auth)/login');
+  };
+
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        onPress: async () => {
-          await AsyncStorage.removeItem('token');
-          await AsyncStorage.removeItem('user');
-          router.replace('/login');
-        },
-        style: 'destructive'
+    if (Platform.OS === 'web') {
+      const confirmLogout = window.confirm('Are you sure you want to logout?');
+      if (confirmLogout) {
+        await performLogout();
       }
-    ]);
+    } else {
+      Alert.alert('Logout', 'Are you sure you want to logout?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          onPress: performLogout,
+          style: 'destructive'
+        }
+      ]);
+    }
   };
 
   const StatCard = ({ label, value, icon, index }: any) => (
@@ -188,6 +206,13 @@ const AdminDashboardScreen = () => {
       icon: <BadgeCheck size={24} color={LuxuryColors.accent} />,
       onPress: () => router.push('/(admin)/seller-requests'),
       items: 'Pending review'
+    },
+    {
+      title: 'Voucher Management',
+      description: 'Create and manage platform discount codes',
+      icon: <Ticket size={24} color={LuxuryColors.accent} />,
+      onPress: () => router.push('/(admin)/vouchers'),
+      items: 'Manage discounts'
     }
   ];
 
@@ -204,42 +229,73 @@ const AdminDashboardScreen = () => {
             <Text style={styles.title}>Control Center</Text>
             <Text style={styles.subtitle}>Executive dashboard</Text>
           </View>
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={{
-              padding: 10,
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderRadius: LuxuryRadius.md
-            }}
-          >
-            <LogOut size={20} color={LuxuryColors.danger} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)')}
+              style={{
+                padding: 10,
+                backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                borderRadius: LuxuryRadius.md,
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <Home size={20} color={LuxuryColors.accent} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                padding: 10,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: LuxuryRadius.md,
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <LogOut size={20} color={LuxuryColors.danger} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Key Stats */}
         <View style={styles.statsSection}>
-          <Text style={styles.sectionHeaderText}>Key Metrics</Text>
+          <Text style={styles.sectionHeaderText}>{role === 'seller' ? 'Seller Metrics' : 'Key Metrics'}</Text>
           <View style={styles.statsGrid}>
-            {statItems.map((item, idx) => (
-              <StatCard key={idx} {...item} index={idx} />
-            ))}
+            {statItems
+              .filter((item) => {
+                if (role === 'seller') {
+                  return ['Elite Fleet', 'Reservations', 'Revenue'].includes(item.label);
+                }
+                return true;
+              })
+              .map((item, idx) => (
+                <StatCard key={idx} {...item} index={idx} />
+              ))}
           </View>
         </View>
 
-        {/* Admin Sections */}
+        {/* Admin/Seller Sections */}
         <View style={styles.adminSection}>
-          <Text style={styles.sectionHeaderText}>Administration</Text>
+          <Text style={styles.sectionHeaderText}>{role === 'seller' ? 'Seller Hub' : 'Administration'}</Text>
           <View style={styles.sectionsList}>
-            {adminSections.map((section, idx) => (
-              <SectionCard
-                key={idx}
-                title={section.title}
-                icon={section.icon}
-                onPress={section.onPress}
-                items={section.items}
-                index={idx}
-              />
-            ))}
+            {adminSections
+              .filter((section) => {
+                if (role === 'seller') {
+                  return ['Fleet Management', 'Booking Management', 'Analytics & Reports', 'Voucher Management'].includes(section.title);
+                }
+                return true;
+              })
+              .map((section, idx) => (
+                <SectionCard
+                  key={idx}
+                  title={section.title}
+                  icon={section.icon}
+                  onPress={section.onPress}
+                  items={section.items}
+                  index={idx}
+                />
+              ))}
           </View>
         </View>
 

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, Image, StatusBar, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
-import { MapPin, Gauge, Star, Filter, ChevronLeft } from 'lucide-react-native';
+import { MapPin, Gauge, Star, Filter, ChevronLeft, Plus, Trash2, Edit } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { 
   LuxuryColors, 
@@ -10,7 +11,7 @@ import {
   LuxuryTypography, 
   LuxuryRadius 
 } from '@/constants/luxuryTheme';
-import { getCarsAPI } from '@/services/api';
+import { getCarsAPI, deleteCarAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 import { useAdminGuard } from '@/middleware/adminGuard';
@@ -21,6 +22,7 @@ const AdminCarsScreen = () => {
   const router = useRouter();
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string>('seller');
 
   const loadCars = async () => {
     try {
@@ -34,6 +36,14 @@ const AdminCarsScreen = () => {
   };
 
   useEffect(() => {
+    const checkRole = async () => {
+      const userJson = await AsyncStorage.getItem('user');
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        setRole(user.role || 'seller');
+      }
+    };
+    checkRole();
     loadCars();
   }, []);
 
@@ -43,6 +53,26 @@ const AdminCarsScreen = () => {
       loadCars();
     }, [])
   );
+
+  const handleDeleteCar = async (id: string) => {
+    Alert.alert('Delete Vehicle', 'Are you sure you want to remove this vehicle from the fleet?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteCarAPI(id);
+            Alert.alert('Success', 'Vehicle removed from fleet.');
+            loadCars();
+          } catch (error) {
+            console.error('Delete car error:', error);
+            Alert.alert('Error', 'Failed to delete vehicle.');
+          }
+        }
+      }
+    ]);
+  };
 
   if (loading) {
     return (
@@ -57,13 +87,37 @@ const AdminCarsScreen = () => {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/dashboard');
+              }
+            }} 
+            style={styles.backButton}
+          >
             <ChevronLeft size={24} color={LuxuryColors.accent} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Fleet Inventory</Text>
             <Text style={styles.subtitle}>Curate and manage your ultimate collection</Text>
           </View>
+          {(role === 'admin' || role === 'seller') && (
+            <TouchableOpacity 
+              onPress={() => router.push('/(admin)/car-form')}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: LuxuryRadius.md,
+                backgroundColor: LuxuryColors.accent,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Plus size={20} color={LuxuryColors.background} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.filterBar}>
@@ -104,12 +158,29 @@ const AdminCarsScreen = () => {
                     </View>
                   </View>
 
-                    <View style={styles.cardFooter}>
-                      <Text style={styles.priceText}>
-                        ${c.pricePerDay} <Text style={styles.perDay}>/day</Text>
-                      </Text>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.priceText}>
+                      ${c.pricePerDay} <Text style={styles.perDay}>/day</Text>
+                    </Text>
+                    {(role === 'admin' || role === 'seller') ? (
+                      <View style={styles.footerActions}>
+                        <TouchableOpacity 
+                          onPress={() => router.push({ pathname: '/(admin)/car-form', params: { editId: c._id } } as any)}
+                          style={styles.editBtn}
+                        >
+                          <Edit size={14} color={LuxuryColors.accent} />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => handleDeleteCar(c._id)}
+                          style={styles.deleteBtn}
+                        >
+                          <Trash2 size={14} color={LuxuryColors.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
                       <Text style={styles.readOnlyBadge}>VIEW ONLY</Text>
-                    </View>
+                    )}
+                  </View>
                 </View>
               </GlassCard>
             </Animated.View>

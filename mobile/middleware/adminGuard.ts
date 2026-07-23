@@ -21,8 +21,8 @@ export const useAdminGuard = () => {
         }
 
         const user = JSON.parse(userJson);
-        if (user.role !== 'admin') {
-          // Not an admin
+        if (user.role !== 'admin' && user.role !== 'seller') {
+          // Not an admin or seller
           router.replace('/');
           return;
         }

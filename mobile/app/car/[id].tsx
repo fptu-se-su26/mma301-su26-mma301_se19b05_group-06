@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -161,6 +162,8 @@ export default function CarDetailScreen() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoMessage, setPromoMessage] = useState('');
   const [promoSuccess, setPromoSuccess] = useState<boolean | null>(null);
+  const [promoDiscountValue, setPromoDiscountValue] = useState(0);
+  const [promoDiscountType, setPromoDiscountType] = useState<'percentage' | 'fixed'>('percentage');
 
   // Payment method — chỉ hỗ trợ online (bank_transfer)
   const paymentMethod = 'bank_transfer' as const;
@@ -200,6 +203,8 @@ export default function CarDetailScreen() {
     setEndDate(tomorrow.toISOString().split('T')[0]);
     setPromoCode('');
     setPromoDiscount(0);
+    setPromoDiscountValue(0);
+    setPromoDiscountType('percentage');
     setPromoMessage('');
     setPromoSuccess(null);
     setIsBookingModalVisible(true);
@@ -214,27 +219,67 @@ export default function CarDetailScreen() {
       const response = await applyVoucherAPI(promoCode.trim(), subtotal);
       if (response?.data) {
         const discount = response.data.discountPercentage || response.data.value || 15;
-        setPromoDiscount(discount);
+        if (discount <= 100) {
+          setPromoDiscount(discount);
+          setPromoDiscountValue(discount);
+          setPromoDiscountType('percentage');
+        } else {
+          setPromoDiscount(0);
+          setPromoDiscountValue(discount);
+          setPromoDiscountType('fixed');
+        }
         setPromoSuccess(true);
-        setPromoMessage(`Áp dụng thành công! Giảm giá ${discount}%`);
+        setPromoMessage(`Áp dụng thành công! Giảm giá ${discount <= 100 ? `${discount}%` : `${discount.toLocaleString()} VNĐ`}`);
       }
     } catch (error) {
       console.warn('API voucher offline, applying high-fidelity mock voucher codes');
       const codeUpper = promoCode.trim().toUpperCase();
       if (codeUpper === 'ELITE15' || codeUpper === 'SUMMER2026') {
         setPromoDiscount(15);
+        setPromoDiscountValue(15);
+        setPromoDiscountType('percentage');
         setPromoSuccess(true);
         setPromoMessage('Áp dụng thành công! Ưu đãi đặc quyền 15%');
       } else if (codeUpper === 'WELCOME' || codeUpper === 'FPTU') {
         setPromoDiscount(10);
+        setPromoDiscountValue(10);
+        setPromoDiscountType('percentage');
         setPromoSuccess(true);
         setPromoMessage('Áp dụng thành công! Khách hàng mới giảm 10%');
       } else if (codeUpper === 'SVJ30') {
         setPromoDiscount(30);
+        setPromoDiscountValue(30);
+        setPromoDiscountType('percentage');
         setPromoSuccess(true);
         setPromoMessage('Áp dụng thành công! Khách hàng VIP giảm 30%');
+      } else if (codeUpper === 'DAYGOOD') {
+        setPromoDiscount(20);
+        setPromoDiscountValue(20);
+        setPromoDiscountType('percentage');
+        setPromoSuccess(true);
+        setPromoMessage('Áp dụng thành công! Giảm giá 20%');
+      } else if (codeUpper === 'SUMMER15') {
+        setPromoDiscount(15);
+        setPromoDiscountValue(15);
+        setPromoDiscountType('percentage');
+        setPromoSuccess(true);
+        setPromoMessage('Áp dụng thành công! Giảm giá 15%');
+      } else if (codeUpper === 'VIP500K') {
+        setPromoDiscount(0);
+        setPromoDiscountValue(500000);
+        setPromoDiscountType('fixed');
+        setPromoSuccess(true);
+        setPromoMessage('Áp dụng thành công! Giảm giá trực tiếp 500.000 VNĐ');
+      } else if (codeUpper === 'NEWUSER20') {
+        setPromoDiscount(20);
+        setPromoDiscountValue(20);
+        setPromoDiscountType('percentage');
+        setPromoSuccess(true);
+        setPromoMessage('Áp dụng thành công! Giảm giá 20%');
       } else {
         setPromoDiscount(0);
+        setPromoDiscountValue(0);
+        setPromoDiscountType('percentage');
         setPromoSuccess(false);
         setPromoMessage('Mã ưu đãi không hợp lệ hoặc đã hết hạn');
       }
@@ -263,6 +308,7 @@ export default function CarDetailScreen() {
         customerPhone: car.customerPhone || '',
         pickupLocation: car.location || 'LuxeRide Hub',
         dropoffLocation: car.location || 'LuxeRide Hub',
+        promoCode: promoCode.trim(),
       };
       
       // 1. Tạo Booking
@@ -320,8 +366,10 @@ export default function CarDetailScreen() {
     Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
   );
   const subtotal = car.pricePerDay * daysDifference;
-  const discountAmount = subtotal * (promoDiscount / 100);
-  const finalPrice = subtotal - discountAmount;
+  const discountAmount = promoDiscountType === 'percentage' 
+    ? subtotal * (promoDiscountValue / 100) 
+    : promoDiscountValue;
+  const finalPrice = Math.max(0, subtotal - discountAmount);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -652,6 +700,47 @@ export default function CarDetailScreen() {
                     {promoMessage}
                   </Text>
                 )}
+
+                {/* Voucher Selection Quick Chips */}
+                <View style={{ marginTop: 10 }}>
+                  <Text style={{ fontSize: 10, color: LuxuryColors.textSecondary, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 }}>
+                    AVAILABLE VOUCHERS (TAP TO SELECT)
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                    {[
+                      { code: 'DAYGOOD', desc: '20% OFF', value: 20, type: 'percentage' },
+                      { code: 'SUMMER15', desc: '15% OFF', value: 15, type: 'percentage' },
+                      { code: 'VIP500K', desc: '500K VNĐ OFF', value: 500000, type: 'fixed' },
+                      { code: 'NEWUSER20', desc: '20% OFF', value: 20, type: 'percentage' }
+                    ].map((voucher) => (
+                      <TouchableOpacity
+                        key={voucher.code}
+                        onPress={() => {
+                          setPromoCode(voucher.code);
+                          setPromoDiscount(voucher.type === 'percentage' ? voucher.value : 0);
+                          setPromoDiscountValue(voucher.value);
+                          setPromoDiscountType(voucher.type as any);
+                          setPromoSuccess(true);
+                          setPromoMessage(`Áp dụng thành công! Giảm giá ${voucher.type === 'percentage' ? `${voucher.value}%` : `${voucher.value.toLocaleString()} VNĐ`}`);
+                        }}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          backgroundColor: promoCode === voucher.code ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                          borderWidth: 1,
+                          borderColor: promoCode === voucher.code ? LuxuryColors.accent : 'rgba(255, 255, 255, 0.1)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, color: promoCode === voucher.code ? LuxuryColors.accent : '#FFF', fontWeight: 'bold' }}>
+                          {voucher.code} ({voucher.desc})
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               </View>
 
               {/* PAYMENT METHOD SELECTION */}
@@ -716,10 +805,10 @@ export default function CarDetailScreen() {
                     <Text style={styles.billValue}>{subtotal.toLocaleString()} VNĐ</Text>
                   </View>
 
-                  {promoDiscount > 0 && (
+                  {discountAmount > 0 && (
                     <View style={styles.billRow}>
                       <Text style={[styles.billLabel, { color: LuxuryColors.success }]}>
-                        Promo Discount ({promoDiscount}%)
+                        Promo Discount {promoDiscountType === 'percentage' ? `(${promoDiscountValue}%)` : ''}
                       </Text>
                       <Text style={[styles.billValue, { color: LuxuryColors.success }]}>
                         -{discountAmount.toLocaleString()} VNĐ

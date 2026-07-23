@@ -201,8 +201,8 @@ export default function ShowroomScreen() {
     return cars.filter((car) => {
       const matchesSearch =
         searchQuery.trim() === '' ||
-        car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (car.brand && car.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (car.model && car.model.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (car.location && car.location.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesCategory =
@@ -248,8 +248,8 @@ export default function ShowroomScreen() {
   const filteredCars = cars.filter((car) => {
     const matchesSearch =
       searchQuery.trim() === '' ||
-      car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (car.brand && car.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (car.model && car.model.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (car.location && car.location.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory =

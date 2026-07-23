@@ -82,6 +82,24 @@ export default function ProfileScreen() {
               </View>
             </PremiumPressable>
           )}
+
+          {user?.role === 'seller' && (
+            <PremiumPressable style={styles.menuItem} onPress={() => router.push('/(admin)/dashboard')}>
+              <View style={styles.menuItemLeft}>
+                <Car size={18} color={LuxuryColors.accent} />
+                <Text style={styles.menuItemText}>Seller Dashboard</Text>
+              </View>
+            </PremiumPressable>
+          )}
+
+          {user?.role === 'admin' && (
+            <PremiumPressable style={styles.menuItem} onPress={() => router.push('/(admin)/dashboard')}>
+              <View style={styles.menuItemLeft}>
+                <Car size={18} color={LuxuryColors.accent} />
+                <Text style={styles.menuItemText}>Admin Dashboard</Text>
+              </View>
+            </PremiumPressable>
+          )}
         </View>
 
         {/* Logout Button */}

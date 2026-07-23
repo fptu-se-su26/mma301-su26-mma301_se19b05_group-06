@@ -18,8 +18,8 @@ export const useAdminGuard = (): UseAdminGuardReturn => {
     const checkAdmin = async () => {
       try {
         const user = await getStoredUser();
-        if (!user || user.role !== 'admin') {
-          // Redirect non-admin users to login
+        if (!user || (user.role !== 'admin' && user.role !== 'seller')) {
+          // Redirect non-admin/seller users to login
           await new Promise(r => setTimeout(r, 500)); // Brief delay for smooth transition
           router.replace('/(tabs)');
           return;

@@ -12,7 +12,8 @@ exports.createBooking = async (req, res) => {
       pickupLocation, dropoffLocation,
       notes, note,
       customerName, customerPhone, customerEmail,
-      paymentMethod
+      paymentMethod,
+      promoCode
     } = req.body;
     
     const actualCarId = carId || car;
@@ -31,7 +32,26 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Invalid date range' });
     }
     
-    const totalPrice = carDoc.pricePerDay * numberOfDays;
+    let totalPrice = carDoc.pricePerDay * numberOfDays;
+    
+    if (promoCode) {
+      const codeUpper = promoCode.trim().toUpperCase();
+      let discountAmount = 0;
+      if (codeUpper === 'ELITE15' || codeUpper === 'SUMMER2026' || codeUpper === 'SUMMER15') {
+        discountAmount = totalPrice * 0.15;
+      } else if (codeUpper === 'WELCOME' || codeUpper === 'FPTU' || codeUpper === 'NEWUSER10') {
+        discountAmount = totalPrice * 0.10;
+      } else if (codeUpper === 'SVJ30') {
+        discountAmount = totalPrice * 0.30;
+      } else if (codeUpper === 'DAYGOOD') {
+        discountAmount = totalPrice * 0.20;
+      } else if (codeUpper === 'NEWUSER20') {
+        discountAmount = totalPrice * 0.20;
+      } else if (codeUpper === 'VIP500K') {
+        discountAmount = 500000;
+      }
+      totalPrice = Math.max(0, totalPrice - discountAmount);
+    }
     
     // Fetch user info for fallbacks if not provided
     let finalCustomerName = customerName;

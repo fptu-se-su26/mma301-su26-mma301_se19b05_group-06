@@ -4,7 +4,7 @@ export interface StoredUser {
   _id: string;
   name: string;
   email: string;
-  role: 'admin' | 'customer';
+  role: 'admin' | 'customer' | 'seller';
   token: string;
   refreshToken?: string;
   isVerified?: boolean;
