@@ -135,10 +135,12 @@ const VoucherCard = ({
   voucher,
   onDelete,
   index,
+  canDelete = false,
 }: {
   voucher: Voucher;
   onDelete: (id: string, code: string) => void;
   index: number;
+  canDelete?: boolean;
 }) => {
   const expired = isExpired(voucher.expiryDate);
   const inactive = !voucher.isActive || expired;
@@ -185,12 +187,14 @@ const VoucherCard = ({
               </Text>
             </View>
 
-            <PremiumPressable
-              onPress={() => onDelete(voucher._id, voucher.code)}
-              style={styles.deleteBtn}
-            >
-              <Trash2 size={14} color={LuxuryColors.danger} />
-            </PremiumPressable>
+            {canDelete && (
+              <PremiumPressable
+                onPress={() => onDelete(voucher._id, voucher.code)}
+                style={styles.deleteBtn}
+              >
+                <Trash2 size={14} color={LuxuryColors.danger} />
+              </PremiumPressable>
+            )}
           </View>
         </View>
 
@@ -754,7 +758,7 @@ const AdminVouchersScreen = () => {
         {/* Voucher list */}
         <View style={styles.list}>
           {vouchers.map((v, idx) => (
-            <VoucherCard key={v._id} voucher={v} onDelete={handleDelete} index={idx} />
+            <VoucherCard key={v._id} voucher={v} onDelete={handleDelete} index={idx} canDelete={role === 'seller'} />
           ))}
         </View>
       </ScrollView>

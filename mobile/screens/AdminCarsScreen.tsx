@@ -162,7 +162,7 @@ const AdminCarsScreen = () => {
                     <Text style={styles.priceText}>
                       ${c.pricePerDay} <Text style={styles.perDay}>/day</Text>
                     </Text>
-                    {(role === 'admin' || role === 'seller') ? (
+                    {role === 'seller' ? (
                       <View style={styles.footerActions}>
                         <TouchableOpacity 
                           onPress={() => router.push({ pathname: '/(admin)/car-form', params: { editId: c._id } } as any)}

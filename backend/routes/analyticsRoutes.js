@@ -139,6 +139,9 @@ router.post('/vouchers', protect, sellerOrAdminRouteGuard, async (req, res) => {
 
 router.delete('/vouchers/:id', protect, sellerOrAdminRouteGuard, async (req, res) => {
   try {
+    if (req.user.role === 'admin') {
+      return res.status(403).json({ message: 'Admin không được phép xóa mã giảm giá' });
+    }
     const voucher = await Voucher.findById(req.params.id);
     if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
     if (req.user.role === 'seller' && voucher.sellerId.toString() !== req.user.id) {
