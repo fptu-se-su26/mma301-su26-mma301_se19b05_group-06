@@ -1,0 +1,254 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: 'Times New Roman', serif; font-size: 13pt; margin: 2cm; }
+h1 { text-align: center; font-size: 20pt; color: #1a1a2e; margin-bottom: 5px; }
+h2 { font-size: 16pt; color: #16213e; border-bottom: 2px solid #0f3460; padding-bottom: 5px; margin-top: 25px; }
+h3 { font-size: 14pt; color: #0f3460; margin-top: 15px; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+th { background-color: #0f3460; color: white; padding: 8px 12px; text-align: left; border: 1px solid #0f3460; font-size: 12pt; }
+td { padding: 8px 12px; border: 1px solid #ccc; font-size: 12pt; }
+tr:nth-child(even) { background-color: #f2f2f2; }
+.pass { color: #27ae60; font-weight: bold; }
+.fail { color: #e74c3c; font-weight: bold; }
+.warn { color: #f39c12; font-weight: bold; }
+.header-info { text-align: center; color: #555; font-size: 12pt; margin-bottom: 20px; }
+.section-green { background-color: #eafaf1; padding: 10px; border-left: 4px solid #27ae60; margin: 10px 0; }
+.section-red { background-color: #fdedec; padding: 10px; border-left: 4px solid #e74c3c; margin: 10px 0; }
+.section-blue { background-color: #eaf2f8; padding: 10px; border-left: 4px solid #2980b9; margin: 10px 0; }
+ul { line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<h1>🐞 QA TEST REPORT</h1>
+<h1 style="font-size:16pt; color: #0f3460; margin-top: 0;">Car Rental Web Application (SDN302)</h1>
+
+<div class="header-info">
+<p><b>Project:</b> LuxeRide - Car Rental Platform &nbsp;&nbsp;|&nbsp;&nbsp; <b>URL:</b> http://psdcompany.online</p>
+<p><b>Tester:</b> Trần Chân &nbsp;&nbsp;|&nbsp;&nbsp; <b>Date:</b> 23/07/2026 &nbsp;&nbsp;|&nbsp;&nbsp; <b>Environment:</b> Live Production</p>
+<p><b>Scope:</b> Full System Test (Guest → Customer → Seller → Admin)</p>
+</div>
+
+<hr style="border: 1px solid #0f3460;">
+
+<h2>1. Executive Summary</h2>
+<p>Báo cáo này tổng hợp kết quả kiểm thử toàn diện hệ thống Web Car Rental đã được triển khai (deploy) trên môi trường Production. Tổng cộng <b>17 test cases</b> đã được thực hiện trên 4 vai trò người dùng (Guest, Customer, Seller, Admin).</p>
+
+<table>
+<tr>
+    <th>Tổng Test Cases</th>
+    <th>✅ PASS</th>
+    <th>❌ FAIL</th>
+    <th>Tỉ lệ thành công</th>
+</tr>
+<tr>
+    <td style="text-align:center;"><b>17</b></td>
+    <td style="text-align:center;" class="pass">12</td>
+    <td style="text-align:center;" class="fail">5</td>
+    <td style="text-align:center;"><b>70.6%</b></td>
+</tr>
+</table>
+
+<h2>2. Test Results - PASSED ✅</h2>
+
+<div class="section-green">
+<p><b>Các chức năng dưới đây đã được kiểm thử và hoạt động hoàn hảo trên môi trường Production:</b></p>
+</div>
+
+<table>
+<tr>
+    <th>#</th>
+    <th>Role</th>
+    <th>Test Case</th>
+    <th>Mô tả</th>
+    <th>Kết quả</th>
+</tr>
+<tr>
+    <td>TC-01</td>
+    <td>Guest</td>
+    <td>Homepage Load</td>
+    <td>Trang chủ hiển thị đầy đủ nội dung, hình ảnh, animation mượt mà</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-02</td>
+    <td>Guest</td>
+    <td>Car Listing Page</td>
+    <td>Trang danh sách xe hiển thị đầy đủ thông tin, hình ảnh xe</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-03</td>
+    <td>Guest</td>
+    <td>Car Detail Page</td>
+    <td>Trang chi tiết xe hiển thị thông số kỹ thuật, giá thuê, lịch đặt</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-04</td>
+    <td>Guest</td>
+    <td>Authorization - Block Guest Booking</td>
+    <td>Guest chưa đăng nhập cố đặt xe → Bị chặn, chuyển hướng về trang Login kèm thông báo "Please login first"</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-05</td>
+    <td>Customer</td>
+    <td>Login</td>
+    <td>Đăng nhập bằng email/password thành công, chuyển hướng đúng</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-06</td>
+    <td>Customer</td>
+    <td>Booking Flow (End-to-End)</td>
+    <td>Chọn xe → Chọn ngày trên Calendar → Bấm "Continue to Payment" → Hiển thị QR Payment</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-07</td>
+    <td>Customer</td>
+    <td>My Bookings Page</td>
+    <td>Xem danh sách lịch sử đặt xe với trạng thái (Pending, Approved, Completed)</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-08</td>
+    <td>Customer</td>
+    <td>Register as Seller</td>
+    <td>Form đăng ký làm chủ xe: điền thông tin + upload CCCD → Gửi yêu cầu thành công</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-09</td>
+    <td>Admin</td>
+    <td>Admin Dashboard</td>
+    <td>Tất cả các Tab (Dashboard, Users, Cars, Bookings, Vouchers) đều load đúng, không lỗi 404</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-10</td>
+    <td>Admin</td>
+    <td>Approve/Reject Seller Request</td>
+    <td>Duyệt yêu cầu Seller → Popup xác nhận → Role thay đổi từ "customer" sang "seller" thành công</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-11</td>
+    <td>Seller</td>
+    <td>Seller Dashboard + My Cars</td>
+    <td>Hiển thị thống kê (Total Cars, Total Bookings, Revenue). Tab "My Cars" cho phép thêm/sửa xe</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+<tr>
+    <td>TC-12</td>
+    <td>Seller</td>
+    <td>Seller Vouchers</td>
+    <td>Tab "Vouchers" hiển thị đúng cho Seller, cho phép tạo mã giảm giá</td>
+    <td class="pass">✅ PASS</td>
+</tr>
+</table>
+
+<h2>3. Test Results - FAILED ❌</h2>
+
+<div class="section-red">
+<p><b>Các chức năng dưới đây bị lỗi hoặc thiếu tính năng trên môi trường Production:</b></p>
+</div>
+
+<table>
+<tr>
+    <th>#</th>
+    <th>Role</th>
+    <th>Test Case</th>
+    <th>Mô tả lỗi</th>
+    <th>Severity</th>
+    <th>Kết quả</th>
+</tr>
+<tr>
+    <td>TC-13</td>
+    <td>Guest</td>
+    <td>Register - Page Hang</td>
+    <td>Lần đầu bấm "Create Account", trang web bị treo (Hang) không phản hồi do API gửi mail Timeout. Phải F5 reload lại trang mới đăng ký được.</td>
+    <td class="warn">Medium</td>
+    <td class="fail">❌ FAIL</td>
+</tr>
+<tr>
+    <td>TC-14</td>
+    <td>Guest</td>
+    <td>Register - No Redirect</td>
+    <td>Đăng ký thành công nhưng không hiển thị thông báo "Success" và không tự động chuyển hướng về trang Login. Người dùng phải tự click "Sign In" thủ công.</td>
+    <td class="warn">Medium</td>
+    <td class="fail">❌ FAIL</td>
+</tr>
+<tr>
+    <td>TC-15</td>
+    <td>Customer</td>
+    <td>Profile Page - 404 Error</td>
+    <td>Không tồn tại trang thông tin cá nhân. Truy cập /profile hoặc /dashboard (với role Customer) → Lỗi "No routes matched location" (404).</td>
+    <td class="fail">High</td>
+    <td class="fail">❌ FAIL</td>
+</tr>
+<tr>
+    <td>TC-16</td>
+    <td>Seller</td>
+    <td>Manage Bookings - MISSING FEATURE</td>
+    <td>Seller Dashboard không có Tab "Quản lý Booking". Seller không thể xem danh sách khách đặt xe và không thể Approve/Reject đơn đặt xe. Đây là tính năng nghiệp vụ quan trọng bị thiếu hoàn toàn.</td>
+    <td class="fail">Critical</td>
+    <td class="fail">❌ FAIL</td>
+</tr>
+<tr>
+    <td>TC-17</td>
+    <td>Seller</td>
+    <td>Add Car Form - Input Bug</td>
+    <td>Các ô nhập số (Quantity, Seats) không tự xoá giá trị mặc định "0". Khi gõ thêm số mới, nó bị nối chuỗi (VD: gõ "5" → hiện "05" thay vì "5").</td>
+    <td class="warn">Low</td>
+    <td class="fail">❌ FAIL</td>
+</tr>
+</table>
+
+<h2>4. Recommendations</h2>
+
+<div class="section-blue">
+<p><b>Đề xuất hành động trước buổi Demo:</b></p>
+</div>
+
+<ul>
+<li><b>[CRITICAL]</b> Chuẩn bị sẵn tài khoản đã đăng ký (Customer + Admin + Seller) trước buổi Demo. <b>KHÔNG</b> thực hiện thao tác Đăng ký mới trực tiếp trên sân khấu.</li>
+<li><b>[CRITICAL]</b> Không nhắc tới hoặc click vào trang Profile/Dashboard khi đang ở vai Customer.</li>
+<li><b>[CRITICAL]</b> Khi demo Seller Dashboard, chỉ lướt qua tab "My Cars" và "Vouchers" rồi chuyển sang phần khác. Tránh để giáo viên đặt câu hỏi về việc Seller duyệt Booking ở đâu.</li>
+<li><b>[MEDIUM]</b> Chuẩn bị sẵn 1 file ảnh trên Desktop để upload CCCD khi demo chức năng đăng ký Seller.</li>
+<li><b>[LOW]</b> Khi demo thêm xe, bôi đen xoá hết số cũ trong ô trước khi nhập số mới.</li>
+</ul>
+
+<h2>5. Test Account Credentials</h2>
+
+<table>
+<tr>
+    <th>Role</th>
+    <th>Email</th>
+    <th>Password</th>
+</tr>
+<tr>
+    <td>Customer / Seller</td>
+    <td>testbug123@gmail.com</td>
+    <td>SuperSecretPass123!</td>
+</tr>
+<tr>
+    <td>Admin</td>
+    <td>anhhaikien@luxeride.com</td>
+    <td>kien2004</td>
+</tr>
+</table>
+
+<br>
+<hr>
+<p style="text-align: center; color: #888; font-size: 11pt;">
+<i>QA Test Report - Generated by Trần Chân | LuxeRide Car Rental Project (SDN302) | 23/07/2026</i>
+</p>
+
+</body>
+</html>
