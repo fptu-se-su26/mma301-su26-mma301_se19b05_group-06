@@ -74,7 +74,7 @@ const AdminCarFormScreen = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof CarForm, string>>>({});
   const [modalConfig, setModalConfig] = useState<any>({ visible: false, type: 'success', title: '', message: '' });
   const [cloudName, setCloudName] = useState('dx5szhyyt');
-  const [uploadPreset, setUploadPreset] = useState('ml_default');
+  const [uploadPreset, setUploadPreset] = useState('liiueij8');
 
   useEffect(() => {
     const loadCloudSettings = async () => {
