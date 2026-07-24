@@ -233,7 +233,11 @@ const AdminCarFormScreen = () => {
         confirmText: 'Back to Fleet',
         onConfirm: () => {
           setModalConfig((prev: any) => ({ ...prev, visible: false }));
-          router.back();
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(admin)/cars');
+          }
         }
       });
     } catch (error: any) {
@@ -287,7 +291,16 @@ const AdminCarFormScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
-        <PremiumPressable onPress={() => router.back()} style={styles.backBtn}>
+        <PremiumPressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(admin)/cars');
+            }
+          }}
+          style={styles.backBtn}
+        >
           <ChevronLeft size={24} color="#FFF" />
         </PremiumPressable>
         <Text style={styles.headerTitle}>{isEdit ? 'Edit Vehicle' : 'Add to Fleet'}</Text>
