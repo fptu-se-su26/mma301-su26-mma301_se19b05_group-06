@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Car, Save, Camera } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   LuxuryColors,
@@ -72,6 +73,31 @@ const AdminCarFormScreen = () => {
   const [fetchLoading, setFetchLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof CarForm, string>>>({});
   const [modalConfig, setModalConfig] = useState<any>({ visible: false, type: 'success', title: '', message: '' });
+  const [cloudName, setCloudName] = useState('dx5szhyyt');
+  const [uploadPreset, setUploadPreset] = useState('ml_default');
+
+  useEffect(() => {
+    const loadCloudSettings = async () => {
+      try {
+        const savedCloud = await AsyncStorage.getItem('cloudinary_cloud');
+        const savedPreset = await AsyncStorage.getItem('cloudinary_preset');
+        if (savedCloud) setCloudName(savedCloud);
+        if (savedPreset) setUploadPreset(savedPreset);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadCloudSettings();
+  }, []);
+
+  const saveCloudSettings = async (cName: string, uPreset: string) => {
+    try {
+      await AsyncStorage.setItem('cloudinary_cloud', cName);
+      await AsyncStorage.setItem('cloudinary_preset', uPreset);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleUploadImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -92,8 +118,6 @@ const AdminCarFormScreen = () => {
       const asset = result.assets[0];
       setLoading(true);
       try {
-        const cloudName = 'dx5szhyyt';
-        const uploadPreset = 'ml_default'; 
         let base64Img = `data:image/jpg;base64,${asset.base64}`;
         
         const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
@@ -388,6 +412,32 @@ const AdminCarFormScreen = () => {
           <Text style={styles.sectionTitle}>MEDIA & DESCRIPTION</Text>
           <GlassCard style={styles.inputCard}>
             <View style={{ marginBottom: 12 }}>
+              <Text style={{ ...LuxuryTypography.caption, color: LuxuryColors.textSecondary, marginBottom: 8, letterSpacing: 0.5 }}>CLOUDINARY SETTINGS</Text>
+              <View style={[styles.rowInputs, { marginBottom: 10 }]}>
+                <View style={{ flex: 1 }}>
+                  <LuxuryInput
+                    label="CLOUD NAME"
+                    value={cloudName}
+                    onChangeText={(v) => {
+                      setCloudName(v);
+                      saveCloudSettings(v, uploadPreset);
+                    }}
+                    placeholder="dx5szhyyt"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <LuxuryInput
+                    label="UPLOAD PRESET"
+                    value={uploadPreset}
+                    onChangeText={(v) => {
+                      setUploadPreset(v);
+                      saveCloudSettings(cloudName, v);
+                    }}
+                    placeholder="ml_default"
+                  />
+                </View>
+              </View>
+
               <LuxuryInput
                 label="IMAGE URL"
                 value={form.imageUrl}
