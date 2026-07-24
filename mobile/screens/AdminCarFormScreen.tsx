@@ -7,10 +7,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Car, Save } from 'lucide-react-native';
+import { ChevronLeft, Car, Save, Camera } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import * as ImagePicker from 'expo-image-picker';
 
 import {
   LuxuryColors,
@@ -70,6 +72,57 @@ const AdminCarFormScreen = () => {
   const [fetchLoading, setFetchLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof CarForm, string>>>({});
   const [modalConfig, setModalConfig] = useState<any>({ visible: false, type: 'success', title: '', message: '' });
+
+  const handleUploadImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      alert("Bạn cần cấp quyền truy cập thư viện ảnh để tải ảnh lên!");
+      return;
+    }
+    
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true,
+    });
+    
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      setLoading(true);
+      try {
+        const cloudName = 'dx5szhyyt';
+        const uploadPreset = 'ml_default'; 
+        let base64Img = `data:image/jpg;base64,${asset.base64}`;
+        
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            file: base64Img,
+            upload_preset: uploadPreset
+          })
+        });
+        
+        const data = await response.json();
+        if (data.secure_url) {
+          updateField('imageUrl', data.secure_url);
+          alert("Tải ảnh lên Cloudinary thành công!");
+        } else {
+          console.error("Cloudinary error response:", data);
+          alert(`Lỗi upload: ${data.error?.message || 'Không tìm thấy url ảnh'}`);
+        }
+      } catch (err: any) {
+        console.error("Upload error:", err);
+        alert(`Lỗi kết nối tới Cloudinary: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (isEdit) {
@@ -334,13 +387,37 @@ const AdminCarFormScreen = () => {
         <Animated.View entering={FadeInDown.delay(500)}>
           <Text style={styles.sectionTitle}>MEDIA & DESCRIPTION</Text>
           <GlassCard style={styles.inputCard}>
-            <LuxuryInput
-              label="IMAGE URL"
-              value={form.imageUrl}
-              onChangeText={(v) => updateField('imageUrl', v)}
-              placeholder="https://example.com/car-image.jpg"
-            />
-            {errors.imageUrl && <Text style={styles.errorText}>{errors.imageUrl}</Text>}
+            <View style={{ marginBottom: 12 }}>
+              <LuxuryInput
+                label="IMAGE URL"
+                value={form.imageUrl}
+                onChangeText={(v) => updateField('imageUrl', v)}
+                placeholder="https://example.com/car-image.jpg"
+              />
+              {errors.imageUrl && <Text style={styles.errorText}>{errors.imageUrl}</Text>}
+              
+              <TouchableOpacity
+                onPress={handleUploadImage}
+                disabled={loading}
+                style={{
+                  marginTop: 10,
+                  padding: 14,
+                  borderRadius: LuxuryRadius.md,
+                  backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                  borderWidth: 1.5,
+                  borderColor: LuxuryColors.accent,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 8,
+                }}
+              >
+                <Camera size={16} color={LuxuryColors.accent} />
+                <Text style={{ ...LuxuryTypography.bodySemibold, color: LuxuryColors.accent, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {loading ? 'Uploading...' : 'Upload Image from Device'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <LuxuryInput
               label="DESCRIPTION"
