@@ -49,7 +49,7 @@ exports.register = async (req, res) => {
       <p>Click below to verify your email:</p>
       <a href="${verifyUrl}" style="background:#EAB308;padding:12px 24px;color:#000;text-decoration:none;border-radius:8px">Verify Email</a>
       <p>Link expires in 24 hours.</p>
-    `).catch(() => {}); // Non-blocking — don't fail registration if email fails
+    `).catch((err) => { console.error('Email sending failed in MMA:', err); }); // Non-blocking — don't fail registration if email fails
 
     res.status(201).json({
       message: 'Registration successful. Please check your email to verify your account.',

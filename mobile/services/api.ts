@@ -1,18 +1,32 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 const getBaseURL = () => {
   const envURL = process.env.EXPO_PUBLIC_API_URL;
+  const manifestHost = Constants.expoConfig?.hostUri?.split(':')[0];
+
+  if (envURL) return envURL;
   if (Platform.OS === 'web') return 'http://localhost:5000/api';
-  if (Platform.OS === 'android' && !envURL) return 'http://10.0.2.2:5000/api';
-  return envURL || 'http://192.168.110.178:5000/api';
+  if (Platform.OS === 'android') return 'http://10.0.2.2:5000/api';
+  // Avoid using manifestHost if it's an Expo tunnel (exp.direct) because the backend isn't tunneled
+  if (manifestHost && !manifestHost.includes('exp.direct')) return `http://${manifestHost}:5000/api`;
+  return 'http://10.12.64.91:5000/api';
 };
 
-const API = axios.create({ baseURL: getBaseURL(), timeout: 30000 });
+const API = axios.create({ 
+  baseURL: getBaseURL(), 
+  timeout: 30000,
+  headers: { 'bypass-tunnel-reminder': 'true' }
+});
 
 // Separate instance for AI chat — Gemini can take 30-60s
-const AI_API = axios.create({ baseURL: getBaseURL(), timeout: 60000 });
+const AI_API = axios.create({ 
+  baseURL: getBaseURL(), 
+  timeout: 60000,
+  headers: { 'bypass-tunnel-reminder': 'true' }
+});
 
 // ─── Request Interceptor: attach access token ─────────────────────────────────
 const attachToken = async (config: any) => {
