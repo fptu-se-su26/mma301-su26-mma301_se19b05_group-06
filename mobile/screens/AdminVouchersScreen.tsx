@@ -633,26 +633,41 @@ const AdminVouchersScreen = () => {
   }, []);
 
   const handleDelete = (id: string, code: string) => {
-    Alert.alert(
-      'Delete Voucher',
-      `Are you sure you want to permanently delete the voucher "${code}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAdminVoucherAPI(id);
-              setVouchers((prev) => prev.filter((v) => v._id !== id));
-            } catch {
-              setVouchers((prev) => prev.filter((v) => v._id !== id));
-              Alert.alert('Offline Mode', 'Server offline. Voucher has been deleted locally.');
-            }
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Are you sure you want to permanently delete the voucher "${code}"? This action cannot be undone.`);
+      if (confirmed) {
+        (async () => {
+          try {
+            await deleteAdminVoucherAPI(id);
+            setVouchers((prev) => prev.filter((v) => v._id !== id));
+          } catch {
+            setVouchers((prev) => prev.filter((v) => v._id !== id));
+            alert('Server offline. Voucher has been deleted locally.');
+          }
+        })();
+      }
+    } else {
+      Alert.alert(
+        'Delete Voucher',
+        `Are you sure you want to permanently delete the voucher "${code}"? This action cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteAdminVoucherAPI(id);
+                setVouchers((prev) => prev.filter((v) => v._id !== id));
+              } catch {
+                setVouchers((prev) => prev.filter((v) => v._id !== id));
+                Alert.alert('Offline Mode', 'Server offline. Voucher has been deleted locally.');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleCreated = (newVoucher?: Voucher) => {

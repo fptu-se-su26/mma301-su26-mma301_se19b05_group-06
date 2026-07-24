@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, Image, StatusBar, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, Image, StatusBar, TouchableOpacity, Platform } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { MapPin, Gauge, Star, Filter, ChevronLeft, Plus, Trash2, Edit } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -55,23 +55,37 @@ const AdminCarsScreen = () => {
   );
 
   const handleDeleteCar = async (id: string) => {
-    Alert.alert('Delete Vehicle', 'Are you sure you want to remove this vehicle from the fleet?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteCarAPI(id);
-            Alert.alert('Success', 'Vehicle removed from fleet.');
-            loadCars();
-          } catch (error) {
-            console.error('Delete car error:', error);
-            Alert.alert('Error', 'Failed to delete vehicle.');
-          }
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to remove this vehicle from the fleet?');
+      if (confirmed) {
+        try {
+          await deleteCarAPI(id);
+          alert('Vehicle removed from fleet.');
+          loadCars();
+        } catch (error) {
+          console.error('Delete car error:', error);
+          alert('Failed to delete vehicle.');
         }
       }
-    ]);
+    } else {
+      Alert.alert('Delete Vehicle', 'Are you sure you want to remove this vehicle from the fleet?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCarAPI(id);
+              Alert.alert('Success', 'Vehicle removed from fleet.');
+              loadCars();
+            } catch (error) {
+              console.error('Delete car error:', error);
+              Alert.alert('Error', 'Failed to delete vehicle.');
+            }
+          }
+        }
+      ]);
+    }
   };
 
   if (loading) {
