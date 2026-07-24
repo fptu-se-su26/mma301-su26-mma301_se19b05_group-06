@@ -154,4 +154,29 @@ router.delete('/vouchers/:id', protect, sellerOrAdminRouteGuard, async (req, res
   }
 });
 
+router.get('/vouchers/car/:carId', protect, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.carId);
+    if (!car) {
+      return res.status(404).json({ message: 'Không tìm thấy xe' });
+    }
+    
+    const now = new Date();
+    const vouchers = await Voucher.find({
+      sellerId: car.sellerId,
+      isActive: true,
+      $or: [
+        { expiryDate: { $exists: false } },
+        { expiryDate: null },
+        { expiryDate: { $gte: now } }
+      ]
+    }).sort({ createdAt: -1 });
+    
+    const availableVouchers = vouchers.filter(v => !v.maxUsage || v.usedCount < v.maxUsage);
+    res.json(availableVouchers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

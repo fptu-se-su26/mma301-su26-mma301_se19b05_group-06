@@ -44,7 +44,7 @@ import {
   LuxuryTypography,
   LuxuryRadius,
 } from '@/constants/luxuryTheme';
-import { getCarByIdAPI, createBookingAPI, applyVoucherAPI, createPaymentLinkAPI } from '@/services/api';
+import { getCarByIdAPI, createBookingAPI, applyVoucherAPI, createPaymentLinkAPI, getCarVouchersAPI } from '@/services/api';
 import GlassCard from '@/components/GlassCard';
 import { PremiumPressable } from '@/components/PremiumPressable';
 
@@ -164,6 +164,7 @@ export default function CarDetailScreen() {
   const [promoSuccess, setPromoSuccess] = useState<boolean | null>(null);
   const [promoDiscountValue, setPromoDiscountValue] = useState(0);
   const [promoDiscountType, setPromoDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
 
   // Payment method — chỉ hỗ trợ online (bank_transfer)
   const paymentMethod = 'bank_transfer' as const;
@@ -179,6 +180,14 @@ export default function CarDetailScreen() {
         const response = await getCarByIdAPI(id as string);
         if (response?.data) {
           setCar(response.data);
+          try {
+            const vRes = await getCarVouchersAPI(id as string);
+            if (vRes?.data) {
+              setAvailableVouchers(vRes.data);
+            }
+          } catch (vErr) {
+            console.warn('Failed to load dynamic vouchers for car:', vErr);
+          }
         } else {
           const localCar = MOCK_CARS.find((c) => c._id === id);
           setCar(localCar || MOCK_CARS[0]);
@@ -706,40 +715,44 @@ export default function CarDetailScreen() {
                   <Text style={{ fontSize: 10, color: LuxuryColors.textSecondary, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 }}>
                     AVAILABLE VOUCHERS (TAP TO SELECT)
                   </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-                    {[
-                      { code: 'DAYGOOD', desc: '20% OFF', value: 20, type: 'percentage' },
-                      { code: 'SUMMER15', desc: '15% OFF', value: 15, type: 'percentage' },
-                      { code: 'VIP500K', desc: '500K VNĐ OFF', value: 500000, type: 'fixed' },
-                      { code: 'NEWUSER20', desc: '20% OFF', value: 20, type: 'percentage' }
-                    ].map((voucher) => (
-                      <TouchableOpacity
-                        key={voucher.code}
-                        onPress={() => {
-                          setPromoCode(voucher.code);
-                          setPromoDiscount(voucher.type === 'percentage' ? voucher.value : 0);
-                          setPromoDiscountValue(voucher.value);
-                          setPromoDiscountType(voucher.type as any);
-                          setPromoSuccess(true);
-                          setPromoMessage(`Áp dụng thành công! Giảm giá ${voucher.type === 'percentage' ? `${voucher.value}%` : `${voucher.value.toLocaleString()} VNĐ`}`);
-                        }}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          borderRadius: 8,
-                          backgroundColor: promoCode === voucher.code ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                          borderWidth: 1,
-                          borderColor: promoCode === voucher.code ? LuxuryColors.accent : 'rgba(255, 255, 255, 0.1)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Text style={{ fontSize: 10, color: promoCode === voucher.code ? LuxuryColors.accent : '#FFF', fontWeight: 'bold' }}>
-                          {voucher.code} ({voucher.desc})
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                  {availableVouchers.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                      {availableVouchers.map((voucher) => {
+                        const desc = voucher.description || (voucher.discountType === 'percentage' ? `${voucher.discountValue}% OFF` : `${voucher.discountValue.toLocaleString()} VNĐ OFF`);
+                        return (
+                          <TouchableOpacity
+                            key={voucher.code}
+                            onPress={() => {
+                              setPromoCode(voucher.code);
+                              setPromoDiscount(voucher.discountType === 'percentage' ? voucher.discountValue : 0);
+                              setPromoDiscountValue(voucher.discountValue);
+                              setPromoDiscountType(voucher.discountType);
+                              setPromoSuccess(true);
+                              setPromoMessage(`Áp dụng thành công! Giảm giá ${voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : `${voucher.discountValue.toLocaleString()} VNĐ`}`);
+                            }}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                              backgroundColor: promoCode === voucher.code ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                              borderWidth: 1,
+                              borderColor: promoCode === voucher.code ? LuxuryColors.accent : 'rgba(255, 255, 255, 0.1)',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Text style={{ fontSize: 10, color: promoCode === voucher.code ? LuxuryColors.accent : '#FFF', fontWeight: 'bold' }}>
+                              {voucher.code} ({desc})
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  ) : (
+                    <Text style={{ fontSize: 11, color: LuxuryColors.textMuted, fontStyle: 'italic', marginTop: 4 }}>
+                      No available promotion codes for this vehicle
+                    </Text>
+                  )}
                 </View>
               </View>
 

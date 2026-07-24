@@ -139,6 +139,9 @@ export const deleteReviewAPI = (id: string) =>
 export const applyVoucherAPI = (code: string, bookingValue: number, carId?: string) =>
   API.post('/admin/vouchers/apply', { code, bookingValue, carId });
 
+export const getCarVouchersAPI = (carId: string) =>
+  API.get(`/admin/vouchers/car/${carId}`);
+
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 export const getNotificationsAPI = () =>
   API.get('/admin/notifications/my');
